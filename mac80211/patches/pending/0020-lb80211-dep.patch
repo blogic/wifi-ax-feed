@@ -1,0 +1,15 @@
+Index: backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/Kconfig
+===================================================================
+--- backports-20200628-4.4.60-9a94b73e75.orig/drivers/net/wireless/ath/ath11k/Kconfig
++++ backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/Kconfig
+@@ -6,6 +6,10 @@ config ATH11K
+ 	depends on CRYPTO_MICHAEL_MIC
+ 	depends on ARCH_QCOM || COMPILE_TEST
+ 	select ATH_COMMON
++	select LIB80211
++	select LIB80211_CRYPT_WEP
++	select LIB80211_CRYPT_CCMP
++	select LIB80211_CRYPT_TKIP
+ 	help
+ 	  This module adds support for Qualcomm Technologies 802.11ax family of
+ 	  chipsets.

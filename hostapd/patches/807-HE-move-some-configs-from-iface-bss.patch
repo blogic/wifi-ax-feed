@@ -1,0 +1,429 @@
+From a634b960b5eb44878cba4fa4edf60568495f4aa1 Mon Sep 17 00:00:00 2001
+From: John Crispin <john@phrozen.org>
+Date: Wed, 17 Jun 2020 15:24:06 +0200
+Subject: [PATCH 807/813] HE: move some configs from iface -> bss
+
+The following 3 structs are currently iface structs but should really be
+BSS specififc.
+
+- struct he_operation he_op;
+- struct ieee80211_he_mu_edca_parameter_set he_mu_edca;
+- struct spatial_reuse spr;
+
+Signed-off-by: John Crispin <john@phrozen.org>
+---
+ hostapd/config_file.c  | 78 +++++++++++++++++++++---------------------
+ src/ap/ap_config.c     | 20 +++++------
+ src/ap/ap_config.h     | 58 ++++++++++++++++---------------
+ src/ap/beacon.c        | 12 +++----
+ src/ap/ieee802_11_he.c | 36 +++++++++----------
+ 5 files changed, 103 insertions(+), 101 deletions(-)
+
+Index: hostapd-2020-06-08-5a8b3662/hostapd/config_file.c
+===================================================================
+--- hostapd-2020-06-08-5a8b3662.orig/hostapd/config_file.c
++++ hostapd-2020-06-08-5a8b3662/hostapd/config_file.c
+@@ -3545,110 +3545,110 @@ static int hostapd_config_fill(struct ho
+ 	} else if (os_strcmp(buf, "he_mu_beamformer") == 0) {
+ 		conf->he_phy_capab.he_mu_beamformer = atoi(pos);
+ 	} else if (os_strcmp(buf, "he_bss_color") == 0) {
+-		conf->he_op.he_bss_color = atoi(pos) & 0x3f;
+-		conf->he_op.he_bss_color_disabled = 0;
++		bss->he_op.he_bss_color = atoi(pos) & 0x3f;
++		bss->he_op.he_bss_color_disabled = 0;
+ 	} else if (os_strcmp(buf, "he_bss_color_partial") == 0) {
+-		conf->he_op.he_bss_color_partial = atoi(pos);
++		bss->he_op.he_bss_color_partial = atoi(pos);
+ 	} else if (os_strcmp(buf, "he_default_pe_duration") == 0) {
+-		conf->he_op.he_default_pe_duration = atoi(pos);
++		bss->he_op.he_default_pe_duration = atoi(pos);
+ 	} else if (os_strcmp(buf, "he_twt_required") == 0) {
+-		conf->he_op.he_twt_required = atoi(pos);
++		bss->he_op.he_twt_required = atoi(pos);
+ 	} else if (os_strcmp(buf, "he_rts_threshold") == 0) {
+-		conf->he_op.he_rts_threshold = atoi(pos);
++		bss->he_op.he_rts_threshold = atoi(pos);
+ 	} else if (os_strcmp(buf, "he_basic_mcs_nss_set") == 0) {
+-		conf->he_op.he_basic_mcs_nss_set = atoi(pos);
++		bss->he_op.he_basic_mcs_nss_set = atoi(pos);
+ 	} else if (os_strcmp(buf, "he_mu_edca_qos_info_param_count") == 0) {
+-		conf->he_mu_edca.he_qos_info |=
++		bss->he_mu_edca.he_qos_info |=
+ 			set_he_cap(atoi(pos), HE_QOS_INFO_EDCA_PARAM_SET_COUNT);
+ 	} else if (os_strcmp(buf, "he_mu_edca_qos_info_q_ack") == 0) {
+-		conf->he_mu_edca.he_qos_info |=
++		bss->he_mu_edca.he_qos_info |=
+ 			set_he_cap(atoi(pos), HE_QOS_INFO_Q_ACK);
+ 	} else if (os_strcmp(buf, "he_mu_edca_qos_info_queue_request") == 0) {
+-		conf->he_mu_edca.he_qos_info |=
++		bss->he_mu_edca.he_qos_info |=
+ 			set_he_cap(atoi(pos), HE_QOS_INFO_QUEUE_REQUEST);
+ 	} else if (os_strcmp(buf, "he_mu_edca_qos_info_txop_request") == 0) {
+-		conf->he_mu_edca.he_qos_info |=
++		bss->he_mu_edca.he_qos_info |=
+ 			set_he_cap(atoi(pos), HE_QOS_INFO_TXOP_REQUEST);
+ 	} else if (os_strcmp(buf, "he_mu_edca_ac_be_aifsn") == 0) {
+-		conf->he_mu_edca.he_mu_ac_be_param[HE_MU_AC_PARAM_ACI_IDX] |=
++		bss->he_mu_edca.he_mu_ac_be_param[HE_MU_AC_PARAM_ACI_IDX] |=
+ 			set_he_cap(atoi(pos), HE_MU_AC_PARAM_AIFSN);
+ 	} else if (os_strcmp(buf, "he_mu_edca_ac_be_acm") == 0) {
+-		conf->he_mu_edca.he_mu_ac_be_param[HE_MU_AC_PARAM_ACI_IDX] |=
++		bss->he_mu_edca.he_mu_ac_be_param[HE_MU_AC_PARAM_ACI_IDX] |=
+ 			set_he_cap(atoi(pos), HE_MU_AC_PARAM_ACM);
+ 	} else if (os_strcmp(buf, "he_mu_edca_ac_be_aci") == 0) {
+-		conf->he_mu_edca.he_mu_ac_be_param[HE_MU_AC_PARAM_ACI_IDX] |=
++		bss->he_mu_edca.he_mu_ac_be_param[HE_MU_AC_PARAM_ACI_IDX] |=
+ 			set_he_cap(atoi(pos), HE_MU_AC_PARAM_ACI);
+ 	} else if (os_strcmp(buf, "he_mu_edca_ac_be_ecwmin") == 0) {
+-		conf->he_mu_edca.he_mu_ac_be_param[HE_MU_AC_PARAM_ECW_IDX] |=
++		bss->he_mu_edca.he_mu_ac_be_param[HE_MU_AC_PARAM_ECW_IDX] |=
+ 			set_he_cap(atoi(pos), HE_MU_AC_PARAM_ECWMIN);
+ 	} else if (os_strcmp(buf, "he_mu_edca_ac_be_ecwmax") == 0) {
+-		conf->he_mu_edca.he_mu_ac_be_param[HE_MU_AC_PARAM_ECW_IDX] |=
++		bss->he_mu_edca.he_mu_ac_be_param[HE_MU_AC_PARAM_ECW_IDX] |=
+ 			set_he_cap(atoi(pos), HE_MU_AC_PARAM_ECWMAX);
+ 	} else if (os_strcmp(buf, "he_mu_edca_ac_be_timer") == 0) {
+-		conf->he_mu_edca.he_mu_ac_be_param[HE_MU_AC_PARAM_TIMER_IDX] =
++		bss->he_mu_edca.he_mu_ac_be_param[HE_MU_AC_PARAM_TIMER_IDX] =
+ 			atoi(pos) & 0xff;
+ 	} else if (os_strcmp(buf, "he_mu_edca_ac_bk_aifsn") == 0) {
+-		conf->he_mu_edca.he_mu_ac_bk_param[HE_MU_AC_PARAM_ACI_IDX] |=
++		bss->he_mu_edca.he_mu_ac_bk_param[HE_MU_AC_PARAM_ACI_IDX] |=
+ 			set_he_cap(atoi(pos), HE_MU_AC_PARAM_AIFSN);
+ 	} else if (os_strcmp(buf, "he_mu_edca_ac_bk_acm") == 0) {
+-		conf->he_mu_edca.he_mu_ac_bk_param[HE_MU_AC_PARAM_ACI_IDX] |=
++		bss->he_mu_edca.he_mu_ac_bk_param[HE_MU_AC_PARAM_ACI_IDX] |=
+ 			set_he_cap(atoi(pos), HE_MU_AC_PARAM_ACM);
+ 	} else if (os_strcmp(buf, "he_mu_edca_ac_bk_aci") == 0) {
+-		conf->he_mu_edca.he_mu_ac_bk_param[HE_MU_AC_PARAM_ACI_IDX] |=
++		bss->he_mu_edca.he_mu_ac_bk_param[HE_MU_AC_PARAM_ACI_IDX] |=
+ 			set_he_cap(atoi(pos), HE_MU_AC_PARAM_ACI);
+ 	} else if (os_strcmp(buf, "he_mu_edca_ac_bk_ecwmin") == 0) {
+-		conf->he_mu_edca.he_mu_ac_bk_param[HE_MU_AC_PARAM_ECW_IDX] |=
++		bss->he_mu_edca.he_mu_ac_bk_param[HE_MU_AC_PARAM_ECW_IDX] |=
+ 			set_he_cap(atoi(pos), HE_MU_AC_PARAM_ECWMIN);
+ 	} else if (os_strcmp(buf, "he_mu_edca_ac_bk_ecwmax") == 0) {
+-		conf->he_mu_edca.he_mu_ac_bk_param[HE_MU_AC_PARAM_ECW_IDX] |=
++		bss->he_mu_edca.he_mu_ac_bk_param[HE_MU_AC_PARAM_ECW_IDX] |=
+ 			set_he_cap(atoi(pos), HE_MU_AC_PARAM_ECWMAX);
+ 	} else if (os_strcmp(buf, "he_mu_edca_ac_bk_timer") == 0) {
+-		conf->he_mu_edca.he_mu_ac_bk_param[HE_MU_AC_PARAM_TIMER_IDX] =
++		bss->he_mu_edca.he_mu_ac_bk_param[HE_MU_AC_PARAM_TIMER_IDX] =
+ 			atoi(pos) & 0xff;
+ 	} else if (os_strcmp(buf, "he_mu_edca_ac_vi_aifsn") == 0) {
+-		conf->he_mu_edca.he_mu_ac_vi_param[HE_MU_AC_PARAM_ACI_IDX] |=
++		bss->he_mu_edca.he_mu_ac_vi_param[HE_MU_AC_PARAM_ACI_IDX] |=
+ 			set_he_cap(atoi(pos), HE_MU_AC_PARAM_AIFSN);
+ 	} else if (os_strcmp(buf, "he_mu_edca_ac_vi_acm") == 0) {
+-		conf->he_mu_edca.he_mu_ac_vi_param[HE_MU_AC_PARAM_ACI_IDX] |=
++		bss->he_mu_edca.he_mu_ac_vi_param[HE_MU_AC_PARAM_ACI_IDX] |=
+ 			set_he_cap(atoi(pos), HE_MU_AC_PARAM_ACM);
+ 	} else if (os_strcmp(buf, "he_mu_edca_ac_vi_aci") == 0) {
+-		conf->he_mu_edca.he_mu_ac_vi_param[HE_MU_AC_PARAM_ACI_IDX] |=
++		bss->he_mu_edca.he_mu_ac_vi_param[HE_MU_AC_PARAM_ACI_IDX] |=
+ 			set_he_cap(atoi(pos), HE_MU_AC_PARAM_ACI);
+ 	} else if (os_strcmp(buf, "he_mu_edca_ac_vi_ecwmin") == 0) {
+-		conf->he_mu_edca.he_mu_ac_vi_param[HE_MU_AC_PARAM_ECW_IDX] |=
++		bss->he_mu_edca.he_mu_ac_vi_param[HE_MU_AC_PARAM_ECW_IDX] |=
+ 			set_he_cap(atoi(pos), HE_MU_AC_PARAM_ECWMIN);
+ 	} else if (os_strcmp(buf, "he_mu_edca_ac_vi_ecwmax") == 0) {
+-		conf->he_mu_edca.he_mu_ac_vi_param[HE_MU_AC_PARAM_ECW_IDX] |=
++		bss->he_mu_edca.he_mu_ac_vi_param[HE_MU_AC_PARAM_ECW_IDX] |=
+ 			set_he_cap(atoi(pos), HE_MU_AC_PARAM_ECWMAX);
+ 	} else if (os_strcmp(buf, "he_mu_edca_ac_vi_timer") == 0) {
+-		conf->he_mu_edca.he_mu_ac_vi_param[HE_MU_AC_PARAM_TIMER_IDX] =
++		bss->he_mu_edca.he_mu_ac_vi_param[HE_MU_AC_PARAM_TIMER_IDX] =
+ 			atoi(pos) & 0xff;
+ 	} else if (os_strcmp(buf, "he_mu_edca_ac_vo_aifsn") == 0) {
+-		conf->he_mu_edca.he_mu_ac_vo_param[HE_MU_AC_PARAM_ACI_IDX] |=
++		bss->he_mu_edca.he_mu_ac_vo_param[HE_MU_AC_PARAM_ACI_IDX] |=
+ 			set_he_cap(atoi(pos), HE_MU_AC_PARAM_AIFSN);
+ 	} else if (os_strcmp(buf, "he_mu_edca_ac_vo_acm") == 0) {
+-		conf->he_mu_edca.he_mu_ac_vo_param[HE_MU_AC_PARAM_ACI_IDX] |=
++		bss->he_mu_edca.he_mu_ac_vo_param[HE_MU_AC_PARAM_ACI_IDX] |=
+ 			set_he_cap(atoi(pos), HE_MU_AC_PARAM_ACM);
+ 	} else if (os_strcmp(buf, "he_mu_edca_ac_vo_aci") == 0) {
+-		conf->he_mu_edca.he_mu_ac_vo_param[HE_MU_AC_PARAM_ACI_IDX] |=
++		bss->he_mu_edca.he_mu_ac_vo_param[HE_MU_AC_PARAM_ACI_IDX] |=
+ 			set_he_cap(atoi(pos), HE_MU_AC_PARAM_ACI);
+ 	} else if (os_strcmp(buf, "he_mu_edca_ac_vo_ecwmin") == 0) {
+-		conf->he_mu_edca.he_mu_ac_vo_param[HE_MU_AC_PARAM_ECW_IDX] |=
++		bss->he_mu_edca.he_mu_ac_vo_param[HE_MU_AC_PARAM_ECW_IDX] |=
+ 			set_he_cap(atoi(pos), HE_MU_AC_PARAM_ECWMIN);
+ 	} else if (os_strcmp(buf, "he_mu_edca_ac_vo_ecwmax") == 0) {
+-		conf->he_mu_edca.he_mu_ac_vo_param[HE_MU_AC_PARAM_ECW_IDX] |=
++		bss->he_mu_edca.he_mu_ac_vo_param[HE_MU_AC_PARAM_ECW_IDX] |=
+ 			set_he_cap(atoi(pos), HE_MU_AC_PARAM_ECWMAX);
+ 	} else if (os_strcmp(buf, "he_mu_edca_ac_vo_timer") == 0) {
+-		conf->he_mu_edca.he_mu_ac_vo_param[HE_MU_AC_PARAM_TIMER_IDX] =
++		bss->he_mu_edca.he_mu_ac_vo_param[HE_MU_AC_PARAM_TIMER_IDX] =
+ 			atoi(pos) & 0xff;
+ 	} else if (os_strcmp(buf, "he_spr_sr_control") == 0) {
+-		conf->spr.sr_control = atoi(pos) & 0xff;
++		bss->spr.sr_control = atoi(pos) & 0xff;
+ 	} else if (os_strcmp(buf, "he_spr_non_srg_obss_pd_max_offset") == 0) {
+-		conf->spr.non_srg_obss_pd_max_offset = atoi(pos);
++		bss->spr.non_srg_obss_pd_max_offset = atoi(pos);
+ 	} else if (os_strcmp(buf, "he_spr_srg_obss_pd_min_offset") == 0) {
+-		conf->spr.srg_obss_pd_min_offset = atoi(pos);
++		bss->spr.srg_obss_pd_min_offset = atoi(pos);
+ 	} else if (os_strcmp(buf, "he_spr_srg_obss_pd_max_offset") == 0) {
+-		conf->spr.srg_obss_pd_max_offset = atoi(pos);
++		bss->spr.srg_obss_pd_max_offset = atoi(pos);
+ 	} else if (os_strcmp(buf, "he_oper_chwidth") == 0) {
+ 		conf->he_oper_chwidth = atoi(pos);
+ 	} else if (os_strcmp(buf, "he_oper_centr_freq_seg0_idx") == 0) {
+Index: hostapd-2020-06-08-5a8b3662/src/ap/ap_config.c
+===================================================================
+--- hostapd-2020-06-08-5a8b3662.orig/src/ap/ap_config.c
++++ hostapd-2020-06-08-5a8b3662/src/ap/ap_config.c
+@@ -164,6 +164,16 @@ void hostapd_config_defaults_bss(struct
+ #ifdef CONFIG_TESTING_OPTIONS
+ 	bss->sae_commit_status = -1;
+ #endif /* CONFIG_TESTING_OPTIONS */
++
++#ifdef CONFIG_IEEE80211AX
++	bss->he_op.he_rts_threshold = HE_OPERATION_RTS_THRESHOLD_MASK >>
++		HE_OPERATION_RTS_THRESHOLD_OFFSET;
++	/* Set default basic MCS/NSS set to single stream MCS 0-7 */
++	bss->he_op.he_basic_mcs_nss_set = 0xfffc;
++	bss->he_op.he_bss_color_disabled = 1;
++	bss->he_op.he_bss_color_partial = 0;
++	bss->he_op.he_bss_color = 1;
++#endif /* CONFIG_IEEE80211AX */
+ }
+ 
+ 
+@@ -260,16 +270,6 @@ struct hostapd_config * hostapd_config_d
+ 	conf->acs_num_scans = 5;
+ #endif /* CONFIG_ACS */
+ 
+-#ifdef CONFIG_IEEE80211AX
+-	conf->he_op.he_rts_threshold = HE_OPERATION_RTS_THRESHOLD_MASK >>
+-		HE_OPERATION_RTS_THRESHOLD_OFFSET;
+-	/* Set default basic MCS/NSS set to single stream MCS 0-7 */
+-	conf->he_op.he_basic_mcs_nss_set = 0xfffc;
+-	conf->he_op.he_bss_color_disabled = 1;
+-	conf->he_op.he_bss_color_partial = 0;
+-	conf->he_op.he_bss_color = 1;
+-#endif /* CONFIG_IEEE80211AX */
+-
+ 	/* The third octet of the country string uses an ASCII space character
+ 	 * by default to indicate that the regulations encompass all
+ 	 * environments for the current frequency band in the country. */
+Index: hostapd-2020-06-08-5a8b3662/src/ap/ap_config.h
+===================================================================
+--- hostapd-2020-06-08-5a8b3662.orig/src/ap/ap_config.h
++++ hostapd-2020-06-08-5a8b3662/src/ap/ap_config.h
+@@ -278,6 +278,31 @@ struct airtime_sta_weight {
+ };
+ 
+ /**
++ * struct he_operation - HE operation
++ */
++struct he_operation {
++	u8 he_bss_color;
++	u8 he_bss_color_disabled;
++	u8 he_bss_color_partial;
++	u8 he_default_pe_duration;
++	u8 he_twt_required;
++	u16 he_rts_threshold;
++	u16 he_basic_mcs_nss_set;
++};
++
++/**
++ * struct spatial_reuse - Spatial reuse
++ */
++struct spatial_reuse {
++	u8 sr_control;
++	u8 non_srg_obss_pd_max_offset;
++	u8 srg_obss_pd_min_offset;
++	u8 srg_obss_pd_max_offset;
++	u8 srg_obss_color_bitmap;
++	u8 srg_obss_color_partial_bitmap;
++};
++
++/**
+  * struct hostapd_bss_config - Per-BSS configuration
+  */
+ struct hostapd_bss_config {
+@@ -872,6 +897,11 @@ struct hostapd_bss_config {
+ 	u8 mka_psk_set;
+ #endif /* CONFIG_MACSEC */
+ 	char *config_id;
++#ifdef CONFIG_IEEE80211AX
++	struct he_operation he_op;
++	struct ieee80211_he_mu_edca_parameter_set he_mu_edca;
++	struct spatial_reuse spr;
++#endif
+ };
+ 
+ /**
+@@ -884,31 +914,6 @@ struct he_phy_capabilities_info {
+ };
+ 
+ /**
+- * struct he_operation - HE operation
+- */
+-struct he_operation {
+-	u8 he_bss_color;
+-	u8 he_bss_color_disabled;
+-	u8 he_bss_color_partial;
+-	u8 he_default_pe_duration;
+-	u8 he_twt_required;
+-	u16 he_rts_threshold;
+-	u16 he_basic_mcs_nss_set;
+-};
+-
+-/**
+- * struct spatial_reuse - Spatial reuse
+- */
+-struct spatial_reuse {
+-	u8 sr_control;
+-	u8 non_srg_obss_pd_max_offset;
+-	u8 srg_obss_pd_min_offset;
+-	u8 srg_obss_pd_max_offset;
+-	u8 srg_obss_color_bitmap;
+-	u8 srg_obss_color_partial_bitmap;
+-};
+-
+-/**
+  * struct hostapd_config - Per-radio interface configuration
+  */
+ struct hostapd_config {
+@@ -1038,9 +1043,6 @@ struct hostapd_config {
+ 	int ieee80211ax;
+ #ifdef CONFIG_IEEE80211AX
+ 	struct he_phy_capabilities_info he_phy_capab;
+-	struct he_operation he_op;
+-	struct ieee80211_he_mu_edca_parameter_set he_mu_edca;
+-	struct spatial_reuse spr;
+ 	u8 he_oper_chwidth;
+ 	u8 he_oper_centr_freq_seg0_idx;
+ 	u8 he_oper_centr_freq_seg1_idx;
+Index: hostapd-2020-06-08-5a8b3662/src/ap/beacon.c
+===================================================================
+--- hostapd-2020-06-08-5a8b3662.orig/src/ap/beacon.c
++++ hostapd-2020-06-08-5a8b3662/src/ap/beacon.c
+@@ -1502,16 +1502,16 @@ int ieee802_11_set_beacon(struct hostapd
+ 	params.assocresp_ies = assocresp;
+ 	params.reenable = hapd->reenable_beacon;
+ #ifdef CONFIG_IEEE80211AX
+-	params.he_spr = !!hapd->iface->conf->spr.sr_control;
++	params.he_spr = !!hapd->conf->spr.sr_control;
+ 	params.he_spr_srg_obss_pd_min_offset =
+-		hapd->iface->conf->spr.srg_obss_pd_min_offset;
++		hapd->conf->spr.srg_obss_pd_min_offset;
+ 	params.he_spr_srg_obss_pd_max_offset =
+-		hapd->iface->conf->spr.srg_obss_pd_max_offset;
++		hapd->conf->spr.srg_obss_pd_max_offset;
+ 	params.he_bss_color_disabled =
+-		hapd->iface->conf->he_op.he_bss_color_disabled;
++		hapd->conf->he_op.he_bss_color_disabled;
+ 	params.he_bss_color_partial =
+-		hapd->iface->conf->he_op.he_bss_color_partial;
+-	params.he_bss_color = hapd->iface->conf->he_op.he_bss_color;
++		hapd->conf->he_op.he_bss_color_partial;
++	params.he_bss_color = hapd->conf->he_op.he_bss_color;
+ 	params.twt_responder = hostapd_get_he_twt_responder(hapd,
+ 							    IEEE80211_MODE_AP);
+ #endif /* CONFIG_IEEE80211AX */
+Index: hostapd-2020-06-08-5a8b3662/src/ap/ieee802_11_he.c
+===================================================================
+--- hostapd-2020-06-08-5a8b3662.orig/src/ap/ieee802_11_he.c
++++ hostapd-2020-06-08-5a8b3662/src/ap/ieee802_11_he.c
+@@ -181,27 +181,27 @@ u8 * hostapd_eid_he_operation(struct hos
+ 	oper = (struct ieee80211_he_operation *) pos;
+ 	os_memset(oper, 0, sizeof(*oper));
+ 
+-	if (hapd->iface->conf->he_op.he_default_pe_duration)
+-		params |= (hapd->iface->conf->he_op.he_default_pe_duration <<
++	if (hapd->conf->he_op.he_default_pe_duration)
++		params |= (hapd->conf->he_op.he_default_pe_duration <<
+ 			   HE_OPERATION_DFLT_PE_DURATION_OFFSET);
+ 
+-	if (hapd->iface->conf->he_op.he_twt_required)
++	if (hapd->conf->he_op.he_twt_required)
+ 		params |= HE_OPERATION_TWT_REQUIRED;
+ 
+-	if (hapd->iface->conf->he_op.he_rts_threshold)
+-		params |= (hapd->iface->conf->he_op.he_rts_threshold <<
++	if (hapd->conf->he_op.he_rts_threshold)
++		params |= (hapd->conf->he_op.he_rts_threshold <<
+ 			   HE_OPERATION_RTS_THRESHOLD_OFFSET);
+ 
+-	if (hapd->iface->conf->he_op.he_bss_color_disabled)
++	if (hapd->conf->he_op.he_bss_color_disabled)
+ 		params |= HE_OPERATION_BSS_COLOR_DISABLED;
+-	if (hapd->iface->conf->he_op.he_bss_color_partial)
++	if (hapd->conf->he_op.he_bss_color_partial)
+ 		params |= HE_OPERATION_BSS_COLOR_PARTIAL;
+-	params |= hapd->iface->conf->he_op.he_bss_color <<
++	params |= hapd->conf->he_op.he_bss_color <<
+ 		HE_OPERATION_BSS_COLOR_OFFSET;
+ 
+ 	/* HE minimum required basic MCS and NSS for STAs */
+ 	oper->he_mcs_nss_set =
+-		host_to_le16(hapd->iface->conf->he_op.he_basic_mcs_nss_set);
++		host_to_le16(hapd->conf->he_op.he_basic_mcs_nss_set);
+ 
+ 	/* TODO: conditional MaxBSSID Indicator subfield */
+ 
+@@ -244,7 +244,7 @@ u8 * hostapd_eid_he_mu_edca_parameter_se
+ 	u8 *pos;
+ 	size_t i;
+ 
+-	pos = (u8 *) &hapd->iface->conf->he_mu_edca;
++	pos = (u8 *) &hapd->conf->he_mu_edca;
+ 	for (i = 0; i < sizeof(*edca); i++) {
+ 		if (pos[i])
+ 			break;
+@@ -258,7 +258,7 @@ u8 * hostapd_eid_he_mu_edca_parameter_se
+ 	*pos++ = WLAN_EID_EXT_HE_MU_EDCA_PARAMS;
+ 
+ 	edca = (struct ieee80211_he_mu_edca_parameter_set *) pos;
+-	os_memcpy(edca, &hapd->iface->conf->he_mu_edca, sizeof(*edca));
++	os_memcpy(edca, &hapd->conf->he_mu_edca, sizeof(*edca));
+ 
+ 	wpa_hexdump(MSG_DEBUG, "HE: MU EDCA Parameter Set element",
+ 		    pos, sizeof(*edca));
+@@ -275,14 +275,14 @@ u8 * hostapd_eid_spatial_reuse(struct ho
+ 	u8 *pos = eid, *spr_param;
+ 	u8 sz = 1;
+ 
+-	if (!hapd->iface->conf->spr.sr_control)
++	if (!hapd->conf->spr.sr_control)
+ 		return eid;
+ 
+-	if (hapd->iface->conf->spr.sr_control &
++	if (hapd->conf->spr.sr_control &
+ 	    SPATIAL_REUSE_NON_SRG_OFFSET_PRESENT)
+ 		sz++;
+ 
+-	if (hapd->iface->conf->spr.sr_control &
++	if (hapd->conf->spr.sr_control &
+ 	    SPATIAL_REUSE_SRG_INFORMATION_PRESENT)
+ 		sz += 18;
+ 
+@@ -293,17 +293,17 @@ u8 * hostapd_eid_spatial_reuse(struct ho
+ 	spr = (struct ieee80211_spatial_reuse *) pos;
+ 	os_memset(spr, 0, sizeof(*spr));
+ 
+-	spr->sr_ctrl = hapd->iface->conf->spr.sr_control;
++	spr->sr_ctrl = hapd->conf->spr.sr_control;
+ 	pos++;
+ 	spr_param = spr->params;
+ 	if (spr->sr_ctrl & SPATIAL_REUSE_NON_SRG_OFFSET_PRESENT) {
+ 		*spr_param++ =
+-			hapd->iface->conf->spr.non_srg_obss_pd_max_offset;
++			hapd->conf->spr.non_srg_obss_pd_max_offset;
+ 		pos++;
+ 	}
+ 	if (spr->sr_ctrl & SPATIAL_REUSE_SRG_INFORMATION_PRESENT) {
+-		*spr_param++ = hapd->iface->conf->spr.srg_obss_pd_min_offset;
+-		*spr_param++ = hapd->iface->conf->spr.srg_obss_pd_max_offset;
++		*spr_param++ = hapd->conf->spr.srg_obss_pd_min_offset;
++		*spr_param++ = hapd->conf->spr.srg_obss_pd_max_offset;
+ 		pos += 18;
+ 	}
+ 

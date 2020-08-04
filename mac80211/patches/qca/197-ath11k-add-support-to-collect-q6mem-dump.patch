@@ -1,0 +1,113 @@
+From b3213496ab8688c6ef6f92be1dce0d1ed32ca9e3 Mon Sep 17 00:00:00 2001
+From: Ramya Gnanasekar <rgnanase@codeaurora.org>
+Date: Thu, 9 Jul 2020 10:48:15 +0530
+Subject: [PATCH] ath11k: add support to collect q6mem dump
+
+q6mem dump is not collected when fw crashes due to system restart.
+Implemented a knob in debugfs to enable/disable fw recovery from
+qsdk to collect q6mem dump .
+
+root@OpenWrt:~# echo 1 > /sys/kernel/debug/ath11k/ipq6018_2/set_fw_recovery
+root@OpenWrt:~# cat /sys/kernel/debug/ath11k/ipq6018_2/set_fw_recovery
+1
+
+Signed-off-by: Ramya Gnanasekar <rgnanase@codeaurora.org>
+---
+ drivers/net/wireless/ath/ath11k/core.c  |  3 ++-
+ drivers/net/wireless/ath/ath11k/core.h  |  1 +
+ drivers/net/wireless/ath/ath11k/debug.c | 46 +++++++++++++++++++++++++++++++++
+ 3 files changed, 49 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/net/wireless/ath/ath11k/core.c b/drivers/net/wireless/ath/ath11k/core.c
+index 4962a9e..5a04191 100644
+--- a/drivers/net/wireless/ath/ath11k/core.c
++++ b/drivers/net/wireless/ath/ath11k/core.c
+@@ -620,7 +620,8 @@ int ath11k_core_ssr_notifier_cb(struct notifier_block *nb, unsigned long event,
+ 	/* TODO Add more driver stats */
+ 
+ 	/* Crash the system once all the stats are dumped */
+-	BUG_ON(1);
++	if(!qmi->ab->fw_recovery_support)
++		BUG_ON(1);
+ }
+ #endif
+ 
+diff --git a/drivers/net/wireless/ath/ath11k/core.h b/drivers/net/wireless/ath/ath11k/core.h
+index f3da827..9dd3a63 100644
+--- a/drivers/net/wireless/ath/ath11k/core.h
++++ b/drivers/net/wireless/ath/ath11k/core.h
+@@ -843,6 +843,7 @@ struct ath11k_base {
+ 	const struct hal_srng_regs *srng_regs;
+ 	u32 sw_pdev_id_map[MAX_RADIOS];
+ 	u32 hw_pdev_id_map[MAX_RADIOS];
++	bool fw_recovery_support;
+ 	/* must be last */
+ 	u8 drv_priv[0] __aligned(sizeof(void *));
+ };
+diff --git a/drivers/net/wireless/ath/ath11k/debug.c b/drivers/net/wireless/ath/ath11k/debug.c
+index ce89918..c8d863a 100644
+--- a/drivers/net/wireless/ath/ath11k/debug.c
++++ b/drivers/net/wireless/ath/ath11k/debug.c
+@@ -1159,6 +1159,48 @@ static const struct file_operations fops_soc_dp_stats = {
+ 	.llseek = default_llseek,
+ };
+ 
++static ssize_t ath11k_debug_write_fw_recovery(struct file *file,
++                                              char __user *user_buf,
++                                              size_t count, loff_t *ppos)
++{
++       struct ath11k_base *ab = file->private_data;
++       bool enable;
++       int ret;
++
++       if (kstrtobool_from_user(user_buf, count, &enable))
++                return -EINVAL;
++
++       if (enable == ab->fw_recovery_support) {
++                ret = count;
++                goto exit;
++       }
++
++       ab->fw_recovery_support = enable;
++       ret = count;
++
++exit:
++       return ret;
++}
++
++static ssize_t ath11k_debug_read_fw_recovery(struct file *file,
++                                          char __user *user_buf,
++                                          size_t count, loff_t *ppos)
++{
++       struct ath11k_base *ab = file->private_data;
++       char buf[32];
++       size_t len;
++
++       len = scnprintf(buf, sizeof(buf), "%u\n", ab->fw_recovery_support);
++
++       return simple_read_from_buffer(user_buf, count, ppos, buf, len);
++}
++
++static const struct file_operations fops_fw_recovery = {
++       .read = ath11k_debug_read_fw_recovery,
++       .write = ath11k_debug_write_fw_recovery,
++       .open = simple_open,
++};
++
+ int ath11k_debug_pdev_create(struct ath11k_base *ab)
+ {
+ 	char soc_name[11] = {0};
+@@ -1186,6 +1228,10 @@ int ath11k_debug_pdev_create(struct ath11k_base *ab)
+ 	debugfs_create_file("soc_ring_stats", 0600, ab->debugfs_soc, ab,
+ 			    &fops_soc_ring_stats);
+ 
++	debugfs_create_file("set_fw_recovery", 0600, ab->debugfs_soc, ab,
++			    &fops_fw_recovery);
++
++
+ 	return 0;
+ }
+ 
+-- 
+2.7.4
+
