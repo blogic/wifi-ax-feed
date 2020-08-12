@@ -1,0 +1,54 @@
+From d08a03b48526206eabd6902e17e34133e1ed35d5 Mon Sep 17 00:00:00 2001
+From: John Crispin <john@phrozen.org>
+Date: Wed, 12 Aug 2020 14:30:55 +0200
+Subject: [PATCH 14/14] ath11k: set the multiple bssid hw flags and
+ capabilities
+
+This wraps up the support for multiple bssid and actually makes
+the feature available.
+
+Signed-off-by: John Crispin <john@phrozen.org>
+---
+ drivers/net/wireless/ath/ath11k/mac.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/drivers/net/wireless/ath/ath11k/mac.c b/drivers/net/wireless/ath/ath11k/mac.c
+index d51a0ff25222..606d2b40a6c6 100644
+--- a/drivers/net/wireless/ath/ath11k/mac.c
++++ b/drivers/net/wireless/ath/ath11k/mac.c
+@@ -5994,19 +5994,23 @@ static int ath11k_mac_setup_channels_rates(struct ath11k *ar,
+ 
+ static const u8 ath11k_if_types_ext_capa[] = {
+ 	[0] = WLAN_EXT_CAPA1_EXT_CHANNEL_SWITCHING,
++	[2] = WLAN_EXT_CAPA3_MULTI_BSSID_SUPPORT,
+ 	[7] = WLAN_EXT_CAPA8_OPMODE_NOTIF,
+ };
+ 
+ static const u8 ath11k_if_types_ext_capa_sta[] = {
+ 	[0] = WLAN_EXT_CAPA1_EXT_CHANNEL_SWITCHING,
++	[2] = WLAN_EXT_CAPA3_MULTI_BSSID_SUPPORT,
+ 	[7] = WLAN_EXT_CAPA8_OPMODE_NOTIF,
+ 	[9] = WLAN_EXT_CAPA10_TWT_REQUESTER_SUPPORT,
+ };
+ 
+ static const u8 ath11k_if_types_ext_capa_ap[] = {
+ 	[0] = WLAN_EXT_CAPA1_EXT_CHANNEL_SWITCHING,
++	[2] = WLAN_EXT_CAPA3_MULTI_BSSID_SUPPORT,
+ 	[7] = WLAN_EXT_CAPA8_OPMODE_NOTIF,
+ 	[9] = WLAN_EXT_CAPA10_TWT_RESPONDER_SUPPORT,
++	[11] = WLAN_EXT_CAPA11_EMA_SUPPORT,
+ };
+ 
+ static const struct wiphy_iftype_ext_capab ath11k_iftypes_ext_capa[] = {
+@@ -6116,6 +6120,8 @@ static int __ath11k_mac_register(struct ath11k *ar)
+ 	ieee80211_hw_set(ar->hw, QUEUE_CONTROL);
+ 	ieee80211_hw_set(ar->hw, SUPPORTS_TX_FRAG);
+ 	ieee80211_hw_set(ar->hw, REPORTS_LOW_ACK);
++	ieee80211_hw_set(ar->hw, SUPPORTS_MULTI_BSSID);
++	ieee80211_hw_set(ar->hw, SUPPORTS_MULTI_BSSID_AP);
+ 	if (ht_cap & WMI_HT_CAP_ENABLED) {
+ 		ieee80211_hw_set(ar->hw, AMPDU_AGGREGATION);
+ 		ieee80211_hw_set(ar->hw, TX_AMPDU_SETUP_IN_HW);
+-- 
+2.25.1
+

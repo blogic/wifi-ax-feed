@@ -1,0 +1,190 @@
+From 19105fa3c8139065c0102e1ef1b1f2a0e6583b0b Mon Sep 17 00:00:00 2001
+From: John Crispin <john@phrozen.org>
+Date: Wed, 12 Aug 2020 15:09:51 +0200
+Subject: [PATCH 10/14] ath11k: add a struct to pass parameters into
+ ath11k_wmi_vdev_up
+
+When setting up a multiple bssid we need to pass additional parameters to
+the FW. Doing this as individual parameters would make the call signature
+very long. Use an intermediate struct instead and adjust all callees to
+make use of it.
+
+Signed-off-by: John Crispin <john@phrozen.org>
+---
+ drivers/net/wireless/ath/ath11k/mac.c | 37 ++++++++++++++++++++++-----
+ drivers/net/wireless/ath/ath11k/wmi.c | 17 +++++++-----
+ drivers/net/wireless/ath/ath11k/wmi.h | 12 +++++++--
+ 3 files changed, 52 insertions(+), 14 deletions(-)
+
+Index: backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/mac.c
+===================================================================
+--- backports-20200628-4.4.60-9a94b73e75.orig/drivers/net/wireless/ath/ath11k/mac.c
++++ backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/mac.c
+@@ -779,6 +779,10 @@ static inline int ath11k_mac_vdev_setup_
+ 
+ static int ath11k_mac_monitor_vdev_start(struct ath11k *ar, int vdev_id)
+ {
++	struct vdev_up_params params = {
++		.vdev_id = vdev_id,
++		.bssid = ar->mac_addr,
++	};
+         struct cfg80211_chan_def *chandef = NULL;
+         struct ieee80211_channel *channel = NULL;
+         struct wmi_vdev_start_req_arg arg = {};
+@@ -825,7 +829,7 @@ static int ath11k_mac_monitor_vdev_start
+                            vdev_id, ret);
+                 return ret;
+         }
+-        ret = ath11k_wmi_vdev_up(ar, vdev_id, 0, ar->mac_addr);
++	ret = ath11k_wmi_vdev_up(ar, &params);
+         if (ret) {
+                 ath11k_warn(ar->ab, "failed to put up monitor vdev %i: %d\n",
+                             vdev_id, ret);
+@@ -1124,6 +1128,12 @@ static void ath11k_control_beaconing(str
+ 				     struct ieee80211_bss_conf *info)
+ {
+ 	struct ath11k *ar = arvif->ar;
++	struct vdev_up_params params = {
++		.vdev_id = arvif->vdev_id,
++		.bssid = arvif->bssid,
++		.profile_num = info->multiple_bssid.count,
++		.profile_idx = info->multiple_bssid.index,
++	};
+ 	int ret = 0;
+ 
+ 	lockdep_assert_held(&arvif->ar->conf_mutex);
+@@ -1160,9 +1170,15 @@ static void ath11k_control_beaconing(str
+ 	arvif->aid = 0;
+ 
+ 	ether_addr_copy(arvif->bssid, info->bssid);
++	if (arvif->vif->multiple_bssid.parent) {
++		struct ath11k_vif *pvif;
+ 
+-	ret = ath11k_wmi_vdev_up(arvif->ar, arvif->vdev_id, arvif->aid,
+-				 arvif->bssid);
++		pvif = (struct ath11k_vif *)arvif->vif->multiple_bssid.parent->drv_priv;
++
++		params.trans_bssid = pvif->bssid;
++	}
++
++	ret = ath11k_wmi_vdev_up(arvif->ar, &params);
+ 	if (ret) {
+ 		ath11k_warn(ar->ab, "failed to bring up vdev %d: %i\n",
+ 			    arvif->vdev_id, ret);
+@@ -2259,6 +2275,11 @@ static void ath11k_bss_assoc(struct ieee
+ 	struct ath11k *ar = hw->priv;
+ 	struct ath11k_vif *arvif = (void *)vif->drv_priv;
+ 	struct peer_assoc_params peer_arg;
++	struct vdev_up_params params = {
++		.vdev_id = arvif->vdev_id,
++		.bssid = bss_conf->bssid,
++		.aid = bss_conf->aid,
++	};
+ 	struct ieee80211_sta *ap_sta;
+ 	struct ieee80211_sta_he_cap  he_cap;
+ 	int ret;
+@@ -2316,7 +2337,7 @@ static void ath11k_bss_assoc(struct ieee
+ 	arvif->aid = bss_conf->aid;
+ 	ether_addr_copy(arvif->bssid, bss_conf->bssid);
+ 
+-	ret = ath11k_wmi_vdev_up(ar, arvif->vdev_id, arvif->aid, arvif->bssid);
++	ret = ath11k_wmi_vdev_up(ar, &params);
+ 	if (ret) {
+ 		ath11k_warn(ar->ab, "failed to set vdev %d up: %d\n",
+ 			    arvif->vdev_id, ret);
+@@ -5891,6 +5912,8 @@ ath11k_mac_update_vif_chan(struct ath11k
+ 	/* TODO: Update ar->rx_channel */
+ 
+ 	for (i = 0; i < n_vifs; i++) {
++		struct vdev_up_params params;
++
+ 		arvif = (void *)vifs[i].vif->drv_priv;
+ 
+ 		if (WARN_ON(!arvif->is_started))
+@@ -5911,8 +5934,10 @@ ath11k_mac_update_vif_chan(struct ath11k
+ 			continue;
+ 		}
+ 
+-		ret = ath11k_wmi_vdev_up(arvif->ar, arvif->vdev_id, arvif->aid,
+-					 arvif->bssid);
++		params.vdev_id = arvif->vdev_id,
++		params.bssid = arvif->bssid,
++		params.aid = arvif->aid,
++		ret = ath11k_wmi_vdev_up(arvif->ar, &params);
+ 		if (ret) {
+ 			ath11k_warn(ab, "failed to bring vdev up %d: %d\n",
+ 				    arvif->vdev_id, ret);
+Index: backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/wmi.c
+===================================================================
+--- backports-20200628-4.4.60-9a94b73e75.orig/drivers/net/wireless/ath/ath11k/wmi.c
++++ backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/wmi.c
+@@ -967,7 +967,7 @@ int ath11k_wmi_vdev_set_ratemask(struct
+ 	return ret;
+ }
+ 
+-int ath11k_wmi_vdev_up(struct ath11k *ar, u32 vdev_id, u32 aid, const u8 *bssid)
++int ath11k_wmi_vdev_up(struct ath11k *ar, struct vdev_up_params *params)
+ {
+ 	struct ath11k_pdev_wmi *wmi = ar->wmi;
+ 	struct wmi_vdev_up_cmd *cmd;
+@@ -982,10 +982,14 @@ int ath11k_wmi_vdev_up(struct ath11k *ar
+ 
+ 	cmd->tlv_header = FIELD_PREP(WMI_TLV_TAG, WMI_TAG_VDEV_UP_CMD) |
+ 			  FIELD_PREP(WMI_TLV_LEN, sizeof(*cmd) - TLV_HDR_SIZE);
+-	cmd->vdev_id = vdev_id;
+-	cmd->vdev_assoc_id = aid;
+-
+-	ether_addr_copy(cmd->vdev_bssid.addr, bssid);
++	cmd->vdev_id = params->vdev_id;
++	cmd->vdev_assoc_id = params->aid;
++	cmd->profile_idx = params->profile_idx;
++	cmd->profile_num = params->profile_num;
++
++	if (params->trans_bssid)
++		ether_addr_copy(cmd->trans_bssid.addr, params->trans_bssid);
++	ether_addr_copy(cmd->vdev_bssid.addr, params->bssid);
+ 
+ 	ret = ath11k_wmi_cmd_send(wmi, skb, WMI_VDEV_UP_CMDID);
+ 	if (ret) {
+@@ -994,8 +998,9 @@ int ath11k_wmi_vdev_up(struct ath11k *ar
+ 	}
+ 
+ 	ath11k_dbg(ar->ab, ATH11K_DBG_WMI,
+-		   "WMI mgmt vdev up id 0x%x assoc id %d bssid %pM\n",
+-		   vdev_id, aid, bssid);
++		   "WMI mgmt vdev up id 0x%x assoc id %d idx %d num %d bssid %pM trans_bssid %pM\n",
++		   params->vdev_id, params->aid, params->profile_idx, params->profile_num,
++		   params->bssid, params->trans_bssid);
+ 
+ 	return ret;
+ }
+Index: backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/wmi.h
+===================================================================
+--- backports-20200628-4.4.60-9a94b73e75.orig/drivers/net/wireless/ath/ath11k/wmi.h
++++ backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/wmi.h
+@@ -2551,6 +2551,15 @@ struct wmi_vdev_config_ratemask_cmd {
+ 	u32 mask_l2;
+ } __packed;
+ 
++struct vdev_up_params {
++	u32 vdev_id;
++	u16 aid;
++	u32 profile_idx;
++	u32 profile_num;
++	const u8 *bssid;
++	u8 *trans_bssid;
++};
++
+ struct wmi_vdev_up_cmd {
+ 	u32 tlv_header;
+ 	u32 vdev_id;
+@@ -5512,8 +5521,7 @@ int ath11k_wmi_bcn_tmpl(struct ath11k *a
+ 			struct ieee80211_mutable_offsets *offs,
+ 			struct sk_buff *bcn);
+ int ath11k_wmi_vdev_down(struct ath11k *ar, u8 vdev_id);
+-int ath11k_wmi_vdev_up(struct ath11k *ar, u32 vdev_id, u32 aid,
+-		       const u8 *bssid);
++int ath11k_wmi_vdev_up(struct ath11k *ar, struct vdev_up_params *params);
+ int ath11k_wmi_vdev_stop(struct ath11k *ar, u8 vdev_id);
+ int ath11k_wmi_vdev_start(struct ath11k *ar, struct wmi_vdev_start_req_arg *arg,
+ 			  bool restart);
