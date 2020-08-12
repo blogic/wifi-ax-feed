@@ -37,6 +37,11 @@ define Package/ath11k-wifi-default
   TITLE:=Custom Board
 endef
 
+define Package/ath11k-wifi-qcom
+$(call Package/ath11k-wifi-default)
+    TITLE:=board-2.bin for QCOM eval kits
+endef
+
 define ath11k-wifi-install-one-to
   $(INSTALL_DIR)  $(2)/lib/firmware/$(3)/
   $(INSTALL_DATA) $(1) $(2)/lib/firmware/$(3)/board.bin
@@ -80,7 +85,14 @@ Do not install it for any other device!
   PREV_BOARD+=ath11k-wifi-$(1)
 endef
 
+define Package/ath11k-wifi-qcom/install
+	$(INSTALL_DIR) $(1)/lib/firmware/IPQ8074/
+	$(INSTALL_DATA) ./board-2.bin $(1)/lib/firmware/IPQ8074/
+endef
+
+
 $(eval $(call generate-ath11k-wifi-package,cig-wf188,Cigtech WF188))
 $(eval $(call generate-ath11k-wifi-package,sercomm-wallaby,Sercomm Kiwi))
 
 $(foreach PACKAGE,$(ALLWIFIPACKAGES),$(eval $(call BuildPackage,$(PACKAGE))))
+$(eval $(call BuildPackage,ath11k-wifi-qcom))
