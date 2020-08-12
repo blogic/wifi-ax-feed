@@ -1,0 +1,39 @@
+From 1ed848df44d350fcc12d9ac79d4892f0428b1eab Mon Sep 17 00:00:00 2001
+From: John Crispin <john@phrozen.org>
+Date: Wed, 3 Jun 2020 16:32:11 +0200
+Subject: [PATCH 818/824] multiple_bssid: add the config file
+
+This patch adds a new config option to enable this feature.
+
+Signed-off-by: John Crispin <john@phrozen.org>
+---
+ hostapd/config_file.c | 2 ++
+ src/ap/ap_config.h    | 2 ++
+ 2 files changed, 4 insertions(+)
+
+Index: hostapd-2020-06-08-5a8b3662/hostapd/config_file.c
+===================================================================
+--- hostapd-2020-06-08-5a8b3662.orig/hostapd/config_file.c
++++ hostapd-2020-06-08-5a8b3662/hostapd/config_file.c
+@@ -4679,6 +4679,8 @@ static int hostapd_config_fill(struct ho
+ 		}
+ 		bss->mka_psk_set |= MKA_PSK_SET_CKN;
+ #endif /* CONFIG_MACSEC */
++	} else if (os_strcmp(buf, "multiple_bssid") == 0) {
++		conf->multiple_bssid = atoi(pos);
+ 	} else if (os_strcmp(buf, "rnr_beacon") == 0) {
+ 		bss->rnr_beacon = atoi(pos);
+ 	} else {
+Index: hostapd-2020-06-08-5a8b3662/src/ap/ap_config.h
+===================================================================
+--- hostapd-2020-06-08-5a8b3662.orig/src/ap/ap_config.h
++++ hostapd-2020-06-08-5a8b3662/src/ap/ap_config.h
+@@ -1006,6 +1006,8 @@ struct hostapd_config {
+ 	u8 vht_oper_centr_freq_seg1_idx;
+ 	u8 ht40_plus_minus_allowed;
+ 
++	u8 multiple_bssid;
++
+ 	/* Use driver-generated interface addresses when adding multiple BSSs */
+ 	u8 use_driver_iface_addr;
+ 

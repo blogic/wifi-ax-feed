@@ -141,8 +141,8 @@ Index: hostapd-2020-06-08-5a8b3662/src/ap/ieee802_11.c
 +			if (hapd->iface->bss[i]->conf->ssid.short_ssid ==
 +			    hapd->conf->ssid.short_ssid)
 +				bss_param |= TBTT_BSS_PARAM_SAME_SSID;
-+		/*	if (hapd->iconf->multiple_bssid)
-+				bss_param |= TBTT_BSS_PARAM_MULTIPLE_BSSID;*/
++			if (hapd->iconf->multiple_bssid)
++				bss_param |= TBTT_BSS_PARAM_MULTIPLE_BSSID;
 +			*eid++ = bss_param;
 +			count++;
 +		}

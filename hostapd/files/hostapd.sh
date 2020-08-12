@@ -136,7 +136,7 @@ hostapd_prepare_device_config() {
 	}
 
 	[ -n "$acs_chan_bias" ] && append base_cfg "acs_chan_bias=$acs_chan_bias" "$N"
-	#append base_cfg "multiple_bssid=$multiple_bssid" "$N"
+	append base_cfg "multiple_bssid=$multiple_bssid" "$N"
 	append base_cfg "rnr_beacon=$rnr_beacon" "$N"
 
 	local brlist= br

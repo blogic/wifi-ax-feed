@@ -2541,16 +2541,19 @@ enum nl80211_commands {
  * @NL80211_ATTR_COLOR_CHANGE_ANNOUNCEMENT_C_OFF_PRESP: An array of offsets (u16) to the color
  *	switch counters in the probe response (%NL80211_ATTR_PROBE_RESP).
  *
- * @NL80211_ATTR_MULTI_BSSID_MODE: Set the (Non-)Transmitted flag for this
+ * @NL80211_ATTR_MULTIPLE_BSSID_NON_TRANSMITTING: Set the Non-Transmitted flag for this
  *	BSSIDs beacon.
  *
- * @NL80211_ATTR_MULTI_BSSID_PARENT: If this is a Non-Transmitted BSSID, define
- *	the parent interface.
+ * @NL80211_ATTR_MULTIPLE_BSSID_PARENT: If this is a Non-Transmitted BSSID, define
+ *	the parent (transmitting) interface.
  *
- * @NL80211_ATTR_MULTI_BSSID_INDEX: The index of this BSS inside the multi bssid
- *	IE.
+ * @NL80211_ATTR_MULTIPLE_BSSID_INDEX: The index of this BSS inside the multi bssid
+ *	element.
  *
- * @NL80211_ATTR_MULTI_BSSID_COUNT: The number of BSSs inside the multi bssid IE.
+ * @NL80211_ATTR_MULTIPLE_BSSID_COUNT: The number of BSSs inside the multi bssid element.
+ *
+ * @NL80211_ATTR_MULTIPLE_BSSID_IES: The Elements that describe our multiple BSS group.
+ *	these get passed separately as the kernel might need to split them up for EMA VAP.
  *
  * @NUM_NL80211_ATTR: total number of nl80211_attrs available
  * @NL80211_ATTR_MAX: highest attribute number currently defined
@@ -3040,10 +3043,11 @@ enum nl80211_attrs {
 	NL80211_ATTR_COLOR_CHANGE_ANNOUNCEMENT_COLOR,
 	NL80211_ATTR_COLOR_CHANGE_ANNOUNCEMENT_IES,
 
-	NL80211_ATTR_MULTI_BSSID_MODE,
-	NL80211_ATTR_MULTI_BSSID_PARENT,
-	NL80211_ATTR_MULTI_BSSID_INDEX,
-	NL80211_ATTR_MULTI_BSSID_COUNT,
+	NL80211_ATTR_MULTIPLE_BSSID_NON_TRANSMITTING,
+	NL80211_ATTR_MULTIPLE_BSSID_PARENT,
+	NL80211_ATTR_MULTIPLE_BSSID_INDEX,
+	NL80211_ATTR_MULTIPLE_BSSID_COUNT,
+	NL80211_ATTR_MULTIPLE_BSSID_IES,
 
 	/* add attributes here, update the policy in nl80211.c */
 
@@ -3107,6 +3111,8 @@ enum nl80211_attrs {
 #define NL80211_SCAN_RSSI_THOLD_OFF		-300
 
 #define NL80211_CQM_TXE_MAX_INTVL		1800
+
+#define NL80211_MULTIPLE_BSSID_IES_MAX		8
 
 /**
  * enum nl80211_iftype - (virtual) interface types
@@ -6865,22 +6871,6 @@ enum nl80211_peer_measurement_ftm_failure_reasons {
 	NL80211_PMSR_FTM_FAILURE_INVALID_TIMESTAMP,
 	NL80211_PMSR_FTM_FAILURE_PEER_BUSY,
 	NL80211_PMSR_FTM_FAILURE_BAD_CHANGED_PARAMS,
-};
-
-/**
- * enum nl80211_multi_bssid_mode - Multiple BSSID beacon type
- *
- * Used by cfg80211_ap_settings
- *
- * @MULTIPLE_BSSID_LEGACY: This BSS is not part of a multiple BSSID group
- * @MULTIPLE_BSSID_TRANSMITTED: This BSS is broadcasting a multiple BSSID
- *                                    beacon
- * @MULTIPLE_BSSID_NON_TRANSMITTED: This BSS is not broadcasting a beacon
- */
-enum nl80211_multi_bssid_mode {
-	NL80211_MULTIPLE_BSSID_LEGACY = 0,
-	NL80211_MULTIPLE_BSSID_TRANSMITTED,
-	NL80211_MULTIPLE_BSSID_NON_TRANSMITTED,
 };
 
 /**
