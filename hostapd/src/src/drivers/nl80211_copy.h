@@ -1170,6 +1170,10 @@
  *	includes the contents of the frame. %NL80211_ATTR_ACK flag is included
  *	if the recipient acknowledged the frame.
  *
+ * @NL80211_CMD_UPDATE_HE_MUEDCA_PARAMS: Updated MU-EDCA parameters from driver.
+ *	This event is used to update dynamic MU-EDCA parameters in Beacon frame,
+ *	coming from driver and now need to be reflected in Beacon frame.
+ *
  * @NL80211_CMD_OBSS_COLOR_COLLISION: This notification is sent out whenever a
  *	mac detects a bss color collision.
  *
@@ -1414,6 +1418,8 @@ enum nl80211_commands {
 	NL80211_CMD_UNPROT_BEACON,
 
 	NL80211_CMD_CONTROL_PORT_FRAME_TX_STATUS,
+
+	NL80211_CMD_UPDATE_HE_MUEDCA_PARAMS,
 
 	NL80211_CMD_OBSS_COLOR_COLLISION,
 
@@ -2527,6 +2533,17 @@ enum nl80211_commands {
  * @NL80211_ATTR_HE_6GHZ_CAPABILITY: HE 6 GHz Band Capability element (from
  *	association request when used with NL80211_CMD_NEW_STATION).
  *
+ * @NL80211_ATTR_HE_MUEDCA_PARAMS: MU-EDCA AC parameters for the
+ *	%NL80211_CMD_UPDATE_HE_MUEDCA_PARAMS command.
+ *
+ * @NL80211_ATTR_FILS_DISCOVERY: Optional parameter to configure FILS
+ *	discovery. It is a nested attribute, see
+ *	&enum nl80211_fils_discovery_attributes.
+ *
+ * @NL80211_ATTR_UNSOL_BCAST_PROBE_RESP: Optional parameter to configure
+ *	unsolicited broadcast probe response. It is a nested attribute, see
+ *	&enum nl80211_unsol_bcast_probe_resp_attributes.
+ *
  * @NL80211_ATTR_OBSS_COLOR_BITMAP: bitmap of the u64 BSS colors for the
  *	%NL80211_CMD_OBSS_COLOR_COLLISION event.
  *
@@ -2534,8 +2551,8 @@ enum nl80211_commands {
  *	until the color switch event.
  * @NL80211_ATTR_COLOR_CHANGE_ANNOUNCEMENT_COLOR: u8 attribute specifying the color that we are
  *	switching to
- * @NL80211_ATTR_COLOR_CHANGE_ANNOUNCEMENT_IES: Nested set of attributes containing the IE information
- *	for the time while performing a color switch.
+ * @NL80211_ATTR_COLOR_CHANGE_ANNOUNCEMENT_IES: Nested set of attributes containing the IE
+ *	information for the time while performing a color switch.
  * @NL80211_ATTR_COLOR_CHANGE_ANNOUNCEMENT_C_OFF_BEACON: An array of offsets (u16) to the color
  *	switch counters in the beacons tail (%NL80211_ATTR_BEACON_TAIL).
  * @NL80211_ATTR_COLOR_CHANGE_ANNOUNCEMENT_C_OFF_PRESP: An array of offsets (u16) to the color
@@ -3036,6 +3053,12 @@ enum nl80211_attrs {
 	NL80211_ATTR_SCAN_FREQ_KHZ,
 
 	NL80211_ATTR_HE_6GHZ_CAPABILITY,
+
+	NL80211_ATTR_HE_MUEDCA_PARAMS,
+
+	NL80211_ATTR_FILS_DISCOVERY,
+
+	NL80211_ATTR_UNSOL_BCAST_PROBE_RESP,
 
 	NL80211_ATTR_OBSS_COLOR_BITMAP,
 
@@ -5870,8 +5893,8 @@ enum nl80211_feature_flags {
  * @NL80211_EXT_FEATURE_WIDE_BAND_SCAN: Driver/device supports wide band scan
  *	 on a frequency along with its corresponding phymode (40Mhz, 80Mhz)
  *
- * @NL80211_EXT_FEATURE_WIDE_BAND_SCAN: Driver/device supports wide band scan
- *	on a frequency along with its corresponding phymode (40Mhz, 80Mhz)
+ * @NL80211_EXT_FEATURE_BSS_COLOR: The driver supports BSS color collision
+ *	detection and change announcemnts.
  *
  * @NUM_NL80211_EXT_FEATURES: number of extended features.
  * @MAX_NL80211_EXT_FEATURES: highest extended feature index.
@@ -5919,7 +5942,6 @@ enum nl80211_ext_feature_index {
 	NL80211_EXT_FEATURE_STA_TX_PWR,
 	NL80211_EXT_FEATURE_SAE_OFFLOAD,
 	NL80211_EXT_FEATURE_VLAN_OFFLOAD,
-	NL80211_EXT_FEATURE_WIDE_BAND_SCAN,
 	NL80211_EXT_FEATURE_AQL,
 	NL80211_EXT_FEATURE_BEACON_PROTECTION,
 	NL80211_EXT_FEATURE_CONTROL_PORT_NO_PREAUTH,
@@ -5929,6 +5951,8 @@ enum nl80211_ext_feature_index {
 	NL80211_EXT_FEATURE_BEACON_PROTECTION_CLIENT,
 	NL80211_EXT_FEATURE_SCAN_FREQ_KHZ,
 	NL80211_EXT_FEATURE_CONTROL_PORT_OVER_NL80211_TX_STATUS,
+	NL80211_EXT_FEATURE_WIDE_BAND_SCAN,
+	NL80211_EXT_FEATURE_BSS_COLOR,
 
 	/* add new features before the definition below */
 	NUM_NL80211_EXT_FEATURES,
@@ -7026,4 +7050,61 @@ enum nl80211_iftype_akm_attributes {
 	NL80211_IFTYPE_AKM_ATTR_MAX = __NL80211_IFTYPE_AKM_ATTR_LAST - 1,
 };
 
+/**
+ * enum nl80211_fils_discovery_attributes - FILS discovery configuration
+ * from IEEE Std 802.11ai-2016, Annex C.3 MIB detail.
+ *
+ * @__NL80211_FILS_DISCOVERY_INVALID: Invalid
+ *
+ * @NL80211_FILS_DISCOVERY_INT_MIN: Minimum packet interval (u32, TU).
+ *	Allowed range: 0..10000 (TU = Time Unit)
+ * @NL80211_FILS_DISCOVERY_INT_MAX: Maximum packet interval (u32, TU).
+ *	Allowed range: 0..10000 (TU = Time Unit)
+ * @NL80211_FILS_DISCOVERY_TMPL: Optional FILS discovery template.
+ *	It has contents of IEEE Std 802.11ai-2016 9.6.8.36 FILS discovery frame
+ *	(Figure 9-687a).
+ *	It may include 6GHz specific data specified in IEEE P802.11ax/D6.0,
+ *	9.6.7.36 FILS Discovery frame format.
+ *
+ * @__NL80211_FILS_DISCOVERY_LAST: Internal
+ * @NL80211_FILS_DISCOVERY_MAX: highest attribute
+ */
+enum nl80211_fils_discovery_attributes {
+	__NL80211_FILS_DISCOVERY_INVALID,
+
+	NL80211_FILS_DISCOVERY_INT_MIN,
+	NL80211_FILS_DISCOVERY_INT_MAX,
+	NL80211_FILS_DISCOVERY_TMPL,
+
+	/* keep last */
+	__NL80211_FILS_DISCOVERY_LAST,
+	NL80211_FILS_DISCOVERY_MAX = __NL80211_FILS_DISCOVERY_LAST - 1
+};
+
+/**
+ * enum nl80211_unsol_bcast_probe_resp_attributes - Unsolicited broadcast probe
+ *     response configuration. Applicable only in 6GHz.
+ *
+ * @__NL80211_UNSOL_BCAST_PROBE_RESP_INVALID: Invalid
+ *
+ * @NL80211_UNSOL_BCAST_PROBE_RESP_INT: Maximum packet interval (u32, TU).
+ *     Allowed range: 0..20 (TU = Time Unit). IEEE P802.11ax/D6.0
+ *     26.17.2.3.2 (AP behavior for fast passive scanning.
+ * @NL80211_UNSOL_BCAST_PROBE_RESP_TMPL: Unsolicited broadcast probe response
+ *     frame template (binary).
+ *
+ * @__NL80211_UNSOL_BCAST_PROBE_RESP_LAST: Internal
+ * @NL80211_UNSOL_BCAST_PROBE_RESP_MAX: highest attribute
+ */
+enum nl80211_unsol_bcast_probe_resp_attributes {
+	__NL80211_UNSOL_BCAST_PROBE_RESP_INVALID,
+
+	NL80211_UNSOL_BCAST_PROBE_RESP_INT,
+	NL80211_UNSOL_BCAST_PROBE_RESP_TMPL,
+
+	/* keep last */
+	__NL80211_UNSOL_BCAST_PROBE_RESP_LAST,
+	NL80211_UNSOL_BCAST_PROBE_RESP_MAX =
+		__NL80211_UNSOL_BCAST_PROBE_RESP_LAST - 1
+};
 #endif /* __LINUX_NL80211_H */

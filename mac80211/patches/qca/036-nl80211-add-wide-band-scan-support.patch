@@ -18,28 +18,25 @@
  	u16 duration;
 --- a/include/uapi/linux/nl80211.h
 +++ b/include/uapi/linux/nl80211.h
-@@ -5773,6 +5773,12 @@ enum nl80211_feature_flags {
+@@ -5773,6 +5773,9 @@ enum nl80211_feature_flags {
   * @NL80211_EXT_FEATURE_CONTROL_PORT_OVER_NL80211_TX_STATUS: The driver
   *	can report tx status for control port over nl80211 tx operations.
   *
 + * @NL80211_EXT_FEATURE_WIDE_BAND_SCAN: Driver/device supports wide band scan
 + *	 on a frequency along with its corresponding phymode (40Mhz, 80Mhz)
 + *
-+ * @NL80211_EXT_FEATURE_WIDE_BAND_SCAN: Driver/device supports wide band scan
-+ *	on a frequency along with its corresponding phymode (40Mhz, 80Mhz)
-+ *
   * @NUM_NL80211_EXT_FEATURES: number of extended features.
   * @MAX_NL80211_EXT_FEATURES: highest extended feature index.
   */
-@@ -5819,6 +5825,7 @@ enum nl80211_ext_feature_index {
- 	NL80211_EXT_FEATURE_STA_TX_PWR,
- 	NL80211_EXT_FEATURE_SAE_OFFLOAD,
- 	NL80211_EXT_FEATURE_VLAN_OFFLOAD,
+@@ -5828,6 +5831,7 @@ enum nl80211_ext_feature_index {
+ 	NL80211_EXT_FEATURE_BEACON_PROTECTION_CLIENT,
+ 	NL80211_EXT_FEATURE_SCAN_FREQ_KHZ,
+ 	NL80211_EXT_FEATURE_CONTROL_PORT_OVER_NL80211_TX_STATUS,
 +	NL80211_EXT_FEATURE_WIDE_BAND_SCAN,
- 	NL80211_EXT_FEATURE_AQL,
- 	NL80211_EXT_FEATURE_BEACON_PROTECTION,
- 	NL80211_EXT_FEATURE_CONTROL_PORT_NO_PREAUTH,
-@@ -5942,6 +5949,8 @@ enum nl80211_timeout_reason {
+ 
+ 	/* add new features before the definition below */
+ 	NUM_NL80211_EXT_FEATURES,
+@@ -5942,6 +5946,8 @@ enum nl80211_timeout_reason {
   * @NL80211_SCAN_FLAG_FREQ_KHZ: report scan results with
   *	%NL80211_ATTR_SCAN_FREQ_KHZ. This also means
   *	%NL80211_ATTR_SCAN_FREQUENCIES will not be included.
@@ -48,7 +45,7 @@
   */
  enum nl80211_scan_flags {
  	NL80211_SCAN_FLAG_LOW_PRIORITY				= 1<<0,
-@@ -5958,6 +5967,7 @@ enum nl80211_scan_flags {
+@@ -5958,6 +5964,7 @@ enum nl80211_scan_flags {
  	NL80211_SCAN_FLAG_RANDOM_SN				= 1<<11,
  	NL80211_SCAN_FLAG_MIN_PREQ_CONTENT			= 1<<12,
  	NL80211_SCAN_FLAG_FREQ_KHZ				= 1<<13,

@@ -72,7 +72,7 @@ PKG_CONFIG_DEPENDS += \
 define KernelPackage/cfg80211
   $(call KernelPackage/mac80211/Default)
   TITLE:=cfg80211 - wireless configuration API
-  DEPENDS+= +iw +wireless-regdb
+  DEPENDS+= +iw #+wireless-regdb
   ABI_VERSION:=$(PKG_VERSION)-$(PKG_RELEASE)
   FILES:= \
 	$(PKG_BUILD_DIR)/compat/compat.ko \
@@ -177,7 +177,7 @@ config-$(call config_package,mac80211-hwsim) += MAC80211_HWSIM
 MAKE_OPTS:= -C "$(PKG_BUILD_DIR)" \
 	CROSS_COMPILE="$(KERNEL_CROSS)" \
         ARCH="$(LINUX_KARCH)" \
-	EXTRA_CFLAGS="-I$(PKG_BUILD_DIR)/include $(IREMAP_CFLAGS)" \
+	EXTRA_CFLAGS="-I$(PKG_BUILD_DIR)/include $(IREMAP_CFLAGS) -I$(STAGING_DIR)/usr/include/qca-nss-drv" \
 	KLIB_BUILD="$(LINUX_DIR)" \
 	MODPROBE=true \
 	KLIB=$(TARGET_MODULES_DIR) \

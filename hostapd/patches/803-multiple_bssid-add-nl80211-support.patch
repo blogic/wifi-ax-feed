@@ -1,7 +1,7 @@
 From 4547ee9dc00d00d94429b740fd5ed40f9281ddbb Mon Sep 17 00:00:00 2001
 From: John Crispin <john@phrozen.org>
 Date: Wed, 3 Jun 2020 16:55:11 +0200
-Subject: [PATCH 821/824] multiple_bssid: add nl80211 support
+Subject: [PATCH 803/820] multiple_bssid: add nl80211 support
 
 Add the code required to send the multiple bssid setup info to the kernel.
 

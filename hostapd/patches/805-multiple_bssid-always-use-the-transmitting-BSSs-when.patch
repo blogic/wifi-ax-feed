@@ -1,7 +1,7 @@
 From f9047ae8430692dc4af02533f2aff436645c20f7 Mon Sep 17 00:00:00 2001
 From: John Crispin <john@phrozen.org>
 Date: Wed, 12 Aug 2020 18:29:29 +0200
-Subject: [PATCH 823/824] multiple_bssid: always use the transmitting BSSs when
+Subject: [PATCH 805/820] multiple_bssid: always use the transmitting BSSs when
  generating the beacons
 
 Add the multiple bssid IEs to the probe response. If this is a unicast

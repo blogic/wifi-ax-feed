@@ -42,11 +42,9 @@ Signed-off-by: Sriram R <srirrama@codeaurora.org>
  drivers/net/wireless/ath/ath11k/wmi.h   | 199 ++++++++++++
  5 files changed, 1245 insertions(+)
 
-diff --git a/drivers/net/wireless/ath/ath11k/core.h b/drivers/net/wireless/ath/ath11k/core.h
-index f3da827..c11f078 100644
 --- a/drivers/net/wireless/ath/ath11k/core.h
 +++ b/drivers/net/wireless/ath/ath11k/core.h
-@@ -628,6 +628,11 @@ struct ath11k {
+@@ -634,6 +634,11 @@ struct ath11k {
  	int monitor_vdev_id;
  
  	struct ath11k_coex_info coex;
@@ -57,12 +55,10 @@ index f3da827..c11f078 100644
 +	bool tpc_request;
  #ifdef CPTCFG_ATH11K_DEBUGFS
  	struct ath11k_debug debug;
- 	struct ath11k_spectral spectral;
-diff --git a/drivers/net/wireless/ath/ath11k/debug.c b/drivers/net/wireless/ath/ath11k/debug.c
-index ce89918..50ee730 100644
+ #endif
 --- a/drivers/net/wireless/ath/ath11k/debug.c
 +++ b/drivers/net/wireless/ath/ath11k/debug.c
-@@ -1777,6 +1777,558 @@ static const struct file_operations fops_enable_m3_dump = {
+@@ -1746,6 +1746,588 @@ static const struct file_operations fops
  	.open = simple_open
  };
  
@@ -237,9 +233,24 @@ index ce89918..50ee730 100644
 +	return tpc;
 +}
 +
++static bool ath11k_he_supports_extra_mcs(struct ath11k *ar, int freq)
++{
++	struct ath11k_pdev_cap *cap = &ar->pdev->cap;
++	struct ath11k_band_cap *cap_band;
++	bool extra_mcs_supported;
++
++	if (freq <= ATH11K_2G_MAX_FREQUENCY)
++		cap_band = &cap->band[NL80211_BAND_2GHZ];
++	else
++		cap_band = &cap->band[NL80211_BAND_5GHZ];
++
++	extra_mcs_supported = FIELD_GET(HE_EXTRA_MCS_SUPPORT, cap_band->he_cap_info[1]);
++	return extra_mcs_supported;
++}
++
 +static int ath11k_tpc_fill_pream(struct ath11k *ar, char *buf, int buf_len, int len,
-+			  int pream_idx, int max_nss, int max_rates,
-+			  int pream_type, int tpc_type, int rate_idx)
++				 int pream_idx, int max_nss, int max_rates,
++				 int pream_type, int tpc_type, int rate_idx)
 +{
 +	int nss, rates, chains;
 +	u8 active_tx_chains;
@@ -261,13 +272,18 @@ index ce89918..50ee730 100644
 +				     "HE160"};
 +
 +	active_tx_chains = ar->num_tx_chains;
++
 +	for (nss = 0; nss < max_nss; nss++) {
 +		for (rates = 0; rates < max_rates; rates++, rate_idx++) {
-+			/* FW send extra MCS(10&11) for VHT rates,
-+			 *  this is not used here
++			/* FW send extra MCS(10&11) for VHT and HE rates,
++			 *  this is not used. Hence skipping it here
 +			 */
 +			if (pream_type == WMI_RATE_PREAMBLE_VHT &&
 +			    rates > ATH11K_VHT_MCS_MAX)
++				continue;
++
++			if (pream_type == WMI_RATE_PREAMBLE_HE &&
++			    rates > ATH11K_HE_MCS_MAX)
 +				continue;
 +
 +			rate_code = ATH11K_HW_RATE_CODE(rates, nss, pream_type);
@@ -317,6 +333,7 @@ index ce89918..50ee730 100644
 +	u32 i, pream_idx = 0, rate_pream_idx = 0, total_rates = 0;
 +	u8 nss, active_tx_chains;
 +	size_t buf_len = ATH11K_TPC_STATS_BUF_SIZE;
++	bool he_ext_mcs;
 +	static const char type_str[ATH11K_DBG_TPC_MAX_STATS][13] = {"SU",
 +					   "SU WITH TXBF",
 +					   "MU",
@@ -358,6 +375,15 @@ index ce89918..50ee730 100644
 +					    WMI_RATE_PREAMBLE_HE};
 +
 +	active_tx_chains = ar->num_tx_chains;
++	he_ext_mcs = ath11k_he_supports_extra_mcs(ar, tpc_stats->tpc_config.chan_freq);
++
++	/* mcs 12&13 is sent by FW for qcn9000 in rate array, skipping it as
++	 * it is not supported
++	 */
++	if (he_ext_mcs) {
++		for (i = WMI_TPC_PREAM_HE20; i <= WMI_TPC_PREAM_HE160;  ++i)
++			max_rates[i] = ATH11K_HE_RATES_WITH_EXTRA_MCS;
++	}
 +
 +	if (type == ATH11K_DBG_TPC_STATS_MU ||
 +	    type == ATH11K_DBG_TPC_STATS_MU_WITH_TXBF)
@@ -621,7 +647,7 @@ index ce89918..50ee730 100644
  int ath11k_debug_register(struct ath11k *ar)
  {
  	struct ath11k_base *ab = ar->ab;
-@@ -1802,6 +2354,7 @@ int ath11k_debug_register(struct ath11k *ar)
+@@ -1771,6 +2353,7 @@ int ath11k_debug_register(struct ath11k
  
  	ath11k_debug_fw_stats_init(ar);
  	ath11k_init_pktlog(ar);
@@ -629,7 +655,7 @@ index ce89918..50ee730 100644
  
  	debugfs_create_file("ext_tx_stats", 0644,
  			    ar->debug.debugfs_pdev, ar,
-@@ -1836,6 +2389,10 @@ int ath11k_debug_register(struct ath11k *ar)
+@@ -1805,6 +2388,10 @@ int ath11k_debug_register(struct ath11k
  	debugfs_create_file("enable_m3_dump", 0644,
  			    ar->debug.debugfs_pdev, ar,
  			    &fops_enable_m3_dump);
@@ -640,30 +666,29 @@ index ce89918..50ee730 100644
  
  	return 0;
  }
-diff --git a/drivers/net/wireless/ath/ath11k/debug.h b/drivers/net/wireless/ath/ath11k/debug.h
-index eade9a6..baadd9f 100644
 --- a/drivers/net/wireless/ath/ath11k/debug.h
 +++ b/drivers/net/wireless/ath/ath11k/debug.h
-@@ -69,6 +69,42 @@ enum ath11k_dbg_htt_ext_stats_type {
+@@ -69,6 +69,43 @@ enum ath11k_dbg_htt_ext_stats_type {
  	ATH11K_DBG_HTT_NUM_EXT_STATS,
  };
  
-+#define ATH11K_CCK_RATES	4
-+#define ATH11K_OFDM_RATES	8
-+#define AT11K_HT_RATES		8
++#define ATH11K_CCK_RATES			4
++#define ATH11K_OFDM_RATES			8
++#define AT11K_HT_RATES				8
 +/* VHT rates includes extra MCS. sent by FW */
-+#define ATH11K_VHT_RATES	12
-+#define ATH11K_HE_RATES		12
-+#define ATH11K_NSS_1		1
-+#define ATH11K_NSS_4		4
-+#define ATH11K_NSS_8		8
-+#define TPC_STATS_WAIT_TIME	(1 * HZ)
-+#define MAX_TPC_PREAM_STR_LEN	7
++#define ATH11K_VHT_RATES			12
++#define ATH11K_HE_RATES				12
++#define ATH11K_HE_RATES_WITH_EXTRA_MCS		14
++#define ATH11K_NSS_1				1
++#define ATH11K_NSS_4				4
++#define ATH11K_NSS_8				8
++#define TPC_STATS_WAIT_TIME			(1 * HZ)
++#define MAX_TPC_PREAM_STR_LEN			7
 +/* Max negative power value to indicate error */
-+#define TPC_INVAL		-128
-+#define TPC_MAX			127
-+#define TPC_STATS_TOT_ROW	700
-+#define TPC_STATS_TOT_COLUMN	100
++#define TPC_INVAL				-128
++#define TPC_MAX					127
++#define TPC_STATS_TOT_ROW			700
++#define TPC_STATS_TOT_COLUMN			100
 +#define ATH11K_TPC_STATS_BUF_SIZE   (TPC_STATS_TOT_ROW * TPC_STATS_TOT_COLUMN)
 +
 +enum ath11k_debug_tpc_stats_type {
@@ -687,11 +712,9 @@ index eade9a6..baadd9f 100644
  struct debug_htt_stats_req {
  	bool done;
  	u8 pdev_id;
-diff --git a/drivers/net/wireless/ath/ath11k/wmi.c b/drivers/net/wireless/ath/ath11k/wmi.c
-index 668e1bb..e3ce798 100644
 --- a/drivers/net/wireless/ath/ath11k/wmi.c
 +++ b/drivers/net/wireless/ath/ath11k/wmi.c
-@@ -79,6 +79,10 @@ static const struct wmi_tlv_policy wmi_tlv_policies[] = {
+@@ -79,6 +79,10 @@ static const struct wmi_tlv_policy wmi_t
  		= { .min_len = 0 },
  	[WMI_TAG_ARRAY_UINT32]
  		= { .min_len = 0 },
@@ -702,7 +725,7 @@ index 668e1bb..e3ce798 100644
  	[WMI_TAG_SERVICE_READY_EVENT]
  		= { .min_len = sizeof(struct wmi_service_ready_event) },
  	[WMI_TAG_SERVICE_READY_EXT_EVENT]
-@@ -127,6 +131,9 @@ static const struct wmi_tlv_policy wmi_tlv_policies[] = {
+@@ -127,6 +131,9 @@ static const struct wmi_tlv_policy wmi_t
  		= { .min_len = sizeof(struct wmi_twt_add_dialog_event) },
  	[WMI_TAG_VDEV_DELETE_RESP_EVENT]
  		= { .min_len = sizeof(struct wmi_vdev_delete_resp_event) },
@@ -712,7 +735,7 @@ index 668e1bb..e3ce798 100644
  };
  
  #define PRIMAP(_hw_mode_) \
-@@ -6925,6 +6932,444 @@ ath11k_wmi_pdev_temperature_event(struct ath11k_base *ab,
+@@ -7012,6 +7019,444 @@ ath11k_wmi_pdev_temperature_event(struct
  	ath11k_thermal_event_temperature(ar, ev.temp);
  }
  
@@ -1157,7 +1180,7 @@ index 668e1bb..e3ce798 100644
  static void ath11k_wmi_twt_add_dialog_event(struct ath11k_base *ab, struct sk_buff *skb)
  {
  	const char *status[] = {
-@@ -7066,6 +7511,9 @@ static void ath11k_wmi_tlv_op_rx(struct ath11k_base *ab, struct sk_buff *skb)
+@@ -7153,6 +7598,9 @@ static void ath11k_wmi_tlv_op_rx(struct
  	case WMI_VDEV_DELETE_RESP_EVENTID:
  		ath11k_vdev_delete_resp_event(ab, skb);
  		break;
@@ -1167,11 +1190,9 @@ index 668e1bb..e3ce798 100644
  	/* TODO: Add remaining events */
  	default:
  		ath11k_warn(ab, "Unknown eventid: 0x%x\n", id);
-diff --git a/drivers/net/wireless/ath/ath11k/wmi.h b/drivers/net/wireless/ath/ath11k/wmi.h
-index f526374..cc3bc14 100644
 --- a/drivers/net/wireless/ath/ath11k/wmi.h
 +++ b/drivers/net/wireless/ath/ath11k/wmi.h
-@@ -270,6 +270,17 @@ enum wmi_tlv_cmd_id {
+@@ -276,6 +276,17 @@ enum wmi_tlv_cmd_id {
  	WMI_PDEV_DMA_RING_CFG_REQ_CMDID,
  	WMI_PDEV_HE_TB_ACTION_FRM_CMDID,
  	WMI_PDEV_PKTLOG_FILTER_CMDID,
@@ -1189,7 +1210,7 @@ index f526374..cc3bc14 100644
  	WMI_VDEV_CREATE_CMDID = WMI_TLV_CMD(WMI_GRP_VDEV),
  	WMI_VDEV_DELETE_CMDID,
  	WMI_VDEV_START_REQUEST_CMDID,
-@@ -616,6 +627,8 @@ enum wmi_tlv_event_id {
+@@ -622,6 +633,8 @@ enum wmi_tlv_event_id {
  	WMI_PDEV_RAP_INFO_EVENTID,
  	WMI_CHAN_RF_CHARACTERIZATION_INFO_EVENTID,
  	WMI_SERVICE_READY_EXT2_EVENTID,
@@ -1198,7 +1219,7 @@ index f526374..cc3bc14 100644
  	WMI_VDEV_START_RESP_EVENTID = WMI_TLV_CMD(WMI_GRP_VDEV),
  	WMI_VDEV_STOPPED_EVENTID,
  	WMI_VDEV_INSTALL_KEY_COMPLETE_EVENTID,
-@@ -1080,6 +1093,7 @@ enum wmi_tlv_tag {
+@@ -1087,6 +1100,7 @@ enum wmi_tlv_tag {
  	WMI_TAG_ARRAY_BYTE,
  	WMI_TAG_ARRAY_STRUCT,
  	WMI_TAG_ARRAY_FIXED_STRUCT,
@@ -1206,7 +1227,7 @@ index f526374..cc3bc14 100644
  	WMI_TAG_LAST_ARRAY_ENUM = 31,
  	WMI_TAG_SERVICE_READY_EVENT,
  	WMI_TAG_HAL_REG_CAPABILITIES,
-@@ -1825,6 +1839,13 @@ enum wmi_tlv_tag {
+@@ -1832,6 +1846,13 @@ enum wmi_tlv_tag {
  	/* TODO add all the missing cmds */
  	WMI_TAG_PDEV_PEER_PKTLOG_FILTER_CMD = 0x301,
  	WMI_TAG_PDEV_PEER_PKTLOG_FILTER_INFO,
@@ -1220,7 +1241,7 @@ index f526374..cc3bc14 100644
  	WMI_TAG_MAX
  };
  
-@@ -5237,6 +5258,182 @@ struct target_resource_config {
+@@ -5267,6 +5288,183 @@ struct target_resource_config {
  	u32 twt_ap_sta_count;
  };
  
@@ -1239,7 +1260,7 @@ index f526374..cc3bc14 100644
 +	WMI_TPC_PREAM_HE160,
 +	WMI_TPC_PREAM_MAX
 +};
-+
++#define ATH11K_2G_MAX_FREQUENCY		2495
 +#define WMI_TPC_CONFIG			BIT(1)
 +#define WMI_TPC_REG_PWR_ALLOWED		BIT(2)
 +#define WMI_TPC_RATES_ARRAY1		BIT(3)
@@ -1253,8 +1274,9 @@ index f526374..cc3bc14 100644
 +#define ATH11K_TPC_RATE_ARRAY_SU	GENMASK(7, 0)
 +#define ATH11K_HW_PREAMBLE(_rcode) (((_rcode) >> 8) & 0x7)
 +#define ATH11K_HW_NSS(_rcode) (((_rcode) >> 5) & 0x7)
-+#define MODULATION_LIMIT 126
++#define MODULATION_LIMIT 		126
 +#define TPC_STATS_REG_PWR_ALLOWED_TYPE	0
++#define HE_EXTRA_MCS_SUPPORT		GENMASK(31, 16)
 +
 +struct wmi_tpc_stats_cmd {
 +	u32 tlv_header;
@@ -1403,13 +1425,10 @@ index f526374..cc3bc14 100644
  #define WMI_MAX_MEM_REQS 32
  
  #define MAX_RADIOS 3
-@@ -5401,4 +5598,6 @@ int ath11k_wmi_send_bss_color_change_enable_cmd(struct ath11k *ar, u32 vdev_id,
- 						bool enable);
- int ath11k_wmi_pdev_lro_cfg(struct ath11k *ar, int pdev_id);
+@@ -5431,4 +5629,6 @@ int ath11k_wmi_vdev_spectral_enable(stru
+ int ath11k_wmi_vdev_spectral_conf(struct ath11k *ar,
+ 				  struct ath11k_wmi_vdev_spectral_conf_param *param);
  int ath11k_wmi_pdev_m3_dump_enable(struct ath11k *ar, u32 enable);
 +int ath11k_wmi_pdev_get_tpc_table_cmdid(struct ath11k *ar);
 +void ath11k_wmi_free_tpc_stats_mem(struct ath11k *ar);
  #endif
--- 
-2.7.4
-

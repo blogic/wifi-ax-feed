@@ -96,7 +96,7 @@ hostapd_common_add_device_config() {
 	config_add_string require_mode
 	config_add_boolean legacy_rates
 
-	config_add_string acs_chan_bias
+	config_add_string acs_chan_bias co_locate
 	config_add_array hostapd_options
 	config_add_boolean multiple_bssid rnr_beacon
 
@@ -111,7 +111,7 @@ hostapd_prepare_device_config() {
 	local base_cfg=
 
 	json_get_vars country country_ie beacon_int:100 dtim_period:2 doth require_mode legacy_rates \
-		acs_chan_bias local_pwr_constraint spectrum_mgmt_required multiple_bssid
+		acs_chan_bias local_pwr_constraint spectrum_mgmt_required multiple_bssid co_locate
 
 	hostapd_set_log_options base_cfg
 
@@ -136,6 +136,7 @@ hostapd_prepare_device_config() {
 	}
 
 	[ -n "$acs_chan_bias" ] && append base_cfg "acs_chan_bias=$acs_chan_bias" "$N"
+	[ -n "$co_locate" ] && append base_cfg "co_locate=$co_locate" "$N"
 	append base_cfg "multiple_bssid=$multiple_bssid" "$N"
 	append base_cfg "rnr_beacon=$rnr_beacon" "$N"
 

@@ -1,4 +1,4 @@
-From a36f219ef81d732e456160f659ee5b2e36419441 Mon Sep 17 00:00:00 2001
+From 0ad10c24e3bb3bafb477eccae189f66c43594aec Mon Sep 17 00:00:00 2001
 From: John Crispin <john@phrozen.org>
 Date: Wed, 12 Aug 2020 14:32:58 +0200
 Subject: [PATCH 08/14] mac80211: add multiple bssid support to beacon handling
@@ -14,31 +14,23 @@ Signed-off-by: John Crispin <john@phrozen.org>
  net/mac80211/ieee80211_i.h |  1 +
  3 files changed, 59 insertions(+), 3 deletions(-)
 
-diff --git a/include/net/mac80211.h b/include/net/mac80211.h
-index b409a5f1026c..a2145092697f 100644
---- a/include/net/mac80211.h
-+++ b/include/net/mac80211.h
-@@ -607,6 +607,7 @@ struct ieee80211_ftm_responder_params {
-  * @he_oper: HE operation information of the AP we are connected to
-  * @he_obss_pd: OBSS Packet Detection parameters.
-  * @he_bss_color: BSS coloring settings, if BSS supports HE
-+ * @multiple_bssid: the multiple bssid settings of the AP.
-  */
- struct ieee80211_bss_conf {
- 	const u8 *bssid;
-@@ -674,6 +675,7 @@ struct ieee80211_bss_conf {
- 	} he_oper;
- 	struct ieee80211_he_obss_pd he_obss_pd;
- 	struct cfg80211_he_bss_color he_bss_color;
+Index: backports-20200628-4.4.60-9a94b73e75/include/net/mac80211.h
+===================================================================
+--- backports-20200628-4.4.60-9a94b73e75.orig/include/net/mac80211.h
++++ backports-20200628-4.4.60-9a94b73e75/include/net/mac80211.h
+@@ -713,6 +713,7 @@ struct ieee80211_bss_conf {
+ 	bool nss_ap_isolate;
+ 	struct ieee80211_fils_discovery fils_discovery;
+ 	u32 unsol_bcast_probe_resp_interval;
 +	struct ieee80211_multiple_bssid multiple_bssid;
  };
  
  /**
-diff --git a/net/mac80211/cfg.c b/net/mac80211/cfg.c
-index 50a219d8a2cc..32c5c6d726b8 100644
---- a/net/mac80211/cfg.c
-+++ b/net/mac80211/cfg.c
-@@ -936,13 +936,39 @@ static int ieee80211_set_ftm_responder_params(
+Index: backports-20200628-4.4.60-9a94b73e75/net/mac80211/cfg.c
+===================================================================
+--- backports-20200628-4.4.60-9a94b73e75.orig/net/mac80211/cfg.c
++++ backports-20200628-4.4.60-9a94b73e75/net/mac80211/cfg.c
+@@ -990,13 +990,39 @@ static int ieee80211_set_ftm_responder_p
  	return 0;
  }
  
@@ -70,7 +62,7 @@ index 50a219d8a2cc..32c5c6d726b8 100644
  static int ieee80211_assign_beacon(struct ieee80211_sub_if_data *sdata,
  				   struct cfg80211_beacon_data *params,
  				   const struct ieee80211_csa_settings *csa,
- 				   const struct ieee80211_cca_settings *cca)
+ 				   const struct ieee80211_color_change_settings *color_change)
  {
  	struct beacon_data *new, *old;
 -	int new_head_len, new_tail_len;
@@ -79,7 +71,7 @@ index 50a219d8a2cc..32c5c6d726b8 100644
  	int size, err;
  	u32 changed = BSS_CHANGED_BEACON;
  
-@@ -966,7 +992,15 @@ static int ieee80211_assign_beacon(struct ieee80211_sub_if_data *sdata,
+@@ -1020,7 +1046,15 @@ static int ieee80211_assign_beacon(struc
  	else
  		new_tail_len = old->tail_len;
  
@@ -96,7 +88,7 @@ index 50a219d8a2cc..32c5c6d726b8 100644
  
  	new = kzalloc(size, GFP_KERNEL);
  	if (!new)
-@@ -983,6 +1017,18 @@ static int ieee80211_assign_beacon(struct ieee80211_sub_if_data *sdata,
+@@ -1037,6 +1071,18 @@ static int ieee80211_assign_beacon(struc
  	new->head_len = new_head_len;
  	new->tail_len = new_tail_len;
  
@@ -115,7 +107,7 @@ index 50a219d8a2cc..32c5c6d726b8 100644
  	if (csa) {
  		new->cntdwn_current_counter = csa->count;
  		memcpy(new->cntdwn_counter_offsets, csa->counter_offsets_beacon,
-@@ -1134,6 +1180,8 @@ static int ieee80211_start_ap(struct wiphy *wiphy, struct net_device *dev,
+@@ -1191,6 +1237,8 @@ static int ieee80211_start_ap(struct wip
  	       sizeof(struct ieee80211_he_obss_pd));
  	memcpy(&sdata->vif.bss_conf.he_bss_color, &params->he_bss_color,
  	       sizeof(struct ieee80211_he_bss_color));
@@ -124,7 +116,7 @@ index 50a219d8a2cc..32c5c6d726b8 100644
  
  	sdata->vif.bss_conf.ssid_len = params->ssid_len;
  	if (params->ssid_len)
-@@ -3015,7 +3063,8 @@ cfg80211_beacon_dup(struct cfg80211_beacon_data *beacon)
+@@ -3112,7 +3160,8 @@ cfg80211_beacon_dup(struct cfg80211_beac
  
  	len = beacon->head_len + beacon->tail_len + beacon->beacon_ies_len +
  	      beacon->proberesp_ies_len + beacon->assocresp_ies_len +
@@ -134,7 +126,7 @@ index 50a219d8a2cc..32c5c6d726b8 100644
  
  	new_beacon = kzalloc(sizeof(*new_beacon) + len, GFP_KERNEL);
  	if (!new_beacon)
-@@ -3058,6 +3107,10 @@ cfg80211_beacon_dup(struct cfg80211_beacon_data *beacon)
+@@ -3155,6 +3204,10 @@ cfg80211_beacon_dup(struct cfg80211_beac
  		memcpy(pos, beacon->probe_resp, beacon->probe_resp_len);
  		pos += beacon->probe_resp_len;
  	}
@@ -145,11 +137,11 @@ index 50a219d8a2cc..32c5c6d726b8 100644
  
  	/* might copy -1, meaning no changes requested */
  	new_beacon->ftm_responder = beacon->ftm_responder;
-diff --git a/net/mac80211/ieee80211_i.h b/net/mac80211/ieee80211_i.h
-index c8a25f62e458..016bed63e74e 100644
---- a/net/mac80211/ieee80211_i.h
-+++ b/net/mac80211/ieee80211_i.h
-@@ -268,6 +268,7 @@ struct beacon_data {
+Index: backports-20200628-4.4.60-9a94b73e75/net/mac80211/ieee80211_i.h
+===================================================================
+--- backports-20200628-4.4.60-9a94b73e75.orig/net/mac80211/ieee80211_i.h
++++ backports-20200628-4.4.60-9a94b73e75/net/mac80211/ieee80211_i.h
+@@ -269,6 +269,7 @@ struct beacon_data {
  	struct ieee80211_meshconf_ie *meshconf;
  	u16 cntdwn_counter_offsets[IEEE80211_MAX_CNTDWN_COUNTERS_NUM];
  	u8 cntdwn_current_counter;
@@ -157,6 +149,3 @@ index c8a25f62e458..016bed63e74e 100644
  	struct rcu_head rcu_head;
  };
  
--- 
-2.25.1
-

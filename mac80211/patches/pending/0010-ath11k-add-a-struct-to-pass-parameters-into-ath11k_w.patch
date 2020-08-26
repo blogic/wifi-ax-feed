@@ -1,4 +1,4 @@
-From 19105fa3c8139065c0102e1ef1b1f2a0e6583b0b Mon Sep 17 00:00:00 2001
+From 6e63b3f52fa68d2339745dbb1a072bc28d0a7df1 Mon Sep 17 00:00:00 2001
 From: John Crispin <john@phrozen.org>
 Date: Wed, 12 Aug 2020 15:09:51 +0200
 Subject: [PATCH 10/14] ath11k: add a struct to pass parameters into

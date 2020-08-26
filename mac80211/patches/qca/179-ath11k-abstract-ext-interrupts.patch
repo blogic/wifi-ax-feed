@@ -12,10 +12,8 @@ Subject: [PATCH 1179/1179] ath11k abstract ext interrupts
  drivers/net/wireless/ath/ath11k/pci.c   | 202 +++++++++++++++++++++++++++++++-
  6 files changed, 396 insertions(+), 60 deletions(-)
 
-Index: backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/ahb.c
-===================================================================
---- backports-20200628-4.4.60-9a94b73e75.orig/drivers/net/wireless/ath/ath11k/ahb.c
-+++ backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/ahb.c
+--- a/drivers/net/wireless/ath/ath11k/ahb.c
++++ b/drivers/net/wireless/ath/ath11k/ahb.c
 @@ -13,6 +13,51 @@
  #include "hif.h"
  #include <linux/remoteproc.h>
@@ -68,7 +66,7 @@ Index: backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/ahb.
  static const struct of_device_id ath11k_ahb_of_match[] = {
  	/* TODO: Should we change the compatible string to something similar
  	 * to one that ath10k uses?
-@@ -637,6 +682,15 @@ static int ath11k_ahb_ext_irq_config(str
+@@ -636,6 +681,15 @@ static int ath11k_ahb_ext_irq_config(str
  	int irq;
  	int ret;
  
@@ -84,10 +82,8 @@ Index: backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/ahb.
  	for (i = 0; i < ATH11K_EXT_IRQ_GRP_NUM_MAX; i++) {
  		struct ath11k_ext_irq_grp *irq_grp = &ab->ext_irq_grp[i];
  		u32 num_irq = 0;
-Index: backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/core.h
-===================================================================
---- backports-20200628-4.4.60-9a94b73e75.orig/drivers/net/wireless/ath/ath11k/core.h
-+++ backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/core.h
+--- a/drivers/net/wireless/ath/ath11k/core.h
++++ b/drivers/net/wireless/ath/ath11k/core.h
 @@ -762,6 +762,14 @@ struct ath11k_base {
  	u32 wlan_init_status;
  	int irq_num[ATH11K_IRQ_NUM_MAX];
@@ -103,10 +99,8 @@ Index: backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/core
  	struct napi_struct *napi;
  	struct ath11k_targ_cap target_caps;
  	u32 ext_service_bitmap[WMI_SERVICE_EXT_BM_SIZE];
-Index: backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/dp.c
-===================================================================
---- backports-20200628-4.4.60-9a94b73e75.orig/drivers/net/wireless/ath/ath11k/dp.c
-+++ backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/dp.c
+--- a/drivers/net/wireless/ath/ath11k/dp.c
++++ b/drivers/net/wireless/ath/ath11k/dp.c
 @@ -107,6 +107,124 @@ void ath11k_dp_srng_cleanup(struct ath11
  	ring->vaddr_unaligned = NULL;
  }
@@ -241,7 +235,17 @@ Index: backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/dp.c
  	switch (type) {
  	case HAL_REO_DST:
  		params.intr_batch_cntr_thres_entries =
-@@ -626,13 +746,13 @@ int ath11k_dp_service_srng(struct ath11k
+@@ -148,7 +268,8 @@ int ath11k_dp_srng_setup(struct ath11k_b
+ 	case HAL_RXDMA_MONITOR_STATUS:
+ 		params.low_threshold = num_entries >> 3;
+ 		params.flags |= HAL_SRNG_FLAGS_LOW_THRESH_INTR_EN;
+-		params.intr_batch_cntr_thres_entries = 0;
++		params.intr_batch_cntr_thres_entries =
++				ab->hw_params.mon_status_intr_threshold;
+ 		params.intr_timer_thres_us = HAL_SRNG_INT_TIMER_THRESHOLD_RX;
+ 		break;
+ 	case HAL_WBM2SW_RELEASE:
+@@ -626,13 +747,13 @@ int ath11k_dp_service_srng(struct ath11k
  	int i = 0;
  	int tot_work_done = 0;
  
@@ -258,7 +262,7 @@ Index: backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/dp.c
  		work_done = ath11k_dp_process_rx_err(ab, napi, budget);
  		budget -= work_done;
  		tot_work_done += work_done;
-@@ -640,7 +760,7 @@ int ath11k_dp_service_srng(struct ath11k
+@@ -640,7 +761,7 @@ int ath11k_dp_service_srng(struct ath11k
  			goto done;
  	}
  
@@ -267,7 +271,7 @@ Index: backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/dp.c
  		work_done = ath11k_dp_rx_process_wbm_err(ab,
  							 napi,
  							 budget);
-@@ -651,8 +771,8 @@ int ath11k_dp_service_srng(struct ath11k
+@@ -651,8 +772,8 @@ int ath11k_dp_service_srng(struct ath11k
  			goto done;
  	}
  
@@ -278,7 +282,7 @@ Index: backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/dp.c
  		work_done = ath11k_dp_process_rx(ab, i, napi,
  						 budget);
  		budget -= work_done;
-@@ -661,9 +781,9 @@ int ath11k_dp_service_srng(struct ath11k
+@@ -661,9 +782,9 @@ int ath11k_dp_service_srng(struct ath11k
  			goto done;
  	}
  
@@ -290,7 +294,7 @@ Index: backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/dp.c
  				work_done =
  				ath11k_dp_rx_process_mon_rings(ab,
  							       i, napi,
-@@ -676,11 +796,11 @@ int ath11k_dp_service_srng(struct ath11k
+@@ -676,11 +797,11 @@ int ath11k_dp_service_srng(struct ath11k
  		}
  	}
  
@@ -304,7 +308,7 @@ Index: backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/dp.c
  			work_done = ath11k_dp_process_rxdma_err(ab, i, budget);
  			budget -= work_done;
  			tot_work_done += work_done;
-@@ -689,7 +809,7 @@ int ath11k_dp_service_srng(struct ath11k
+@@ -689,7 +810,7 @@ int ath11k_dp_service_srng(struct ath11k
  		if (budget <= 0)
  			goto done;
  
@@ -313,10 +317,8 @@ Index: backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/dp.c
  			struct ath11k_pdev_dp *dp = &ab->pdevs[i].ar->dp;
  			struct dp_rxdma_ring *rx_ring = &dp->rx_refill_buf_ring;
  
-Index: backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/dp_tx.c
-===================================================================
---- backports-20200628-4.4.60-9a94b73e75.orig/drivers/net/wireless/ath/ath11k/dp_tx.c
-+++ backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/dp_tx.c
+--- a/drivers/net/wireless/ath/ath11k/dp_tx.c
++++ b/drivers/net/wireless/ath/ath11k/dp_tx.c
 @@ -797,9 +797,9 @@ int ath11k_dp_tx_htt_srng_setup(struct a
  	cmd->ring_tail_off32_remote_addr_hi = (u64)tp_addr >>
  					      HAL_ADDR_MSB_REG_SHIFT;
@@ -330,10 +332,8 @@ Index: backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/dp_t
  
  	cmd->intr_info = FIELD_PREP(
  			HTT_SRNG_SETUP_CMD_INTR_INFO_BATCH_COUNTER_THRESH,
-Index: backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/hif.h
-===================================================================
---- backports-20200628-4.4.60-9a94b73e75.orig/drivers/net/wireless/ath/ath11k/hif.h
-+++ backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/hif.h
+--- a/drivers/net/wireless/ath/ath11k/hif.h
++++ b/drivers/net/wireless/ath/ath11k/hif.h
 @@ -33,51 +33,6 @@
  #define ATH11K_RX_MON_STATUS_RING_MASK_1 0x2
  #define ATH11K_RX_MON_STATUS_RING_MASK_2 0x4
@@ -386,11 +386,9 @@ Index: backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/hif.
  struct ath11k_hif_ops {
  	u32 (*read32)(struct ath11k_base *sc, u32 address);
  	void (*write32)(struct ath11k_base *sc, u32 address, u32 data);
-Index: backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/pci.c
-===================================================================
---- backports-20200628-4.4.60-9a94b73e75.orig/drivers/net/wireless/ath/ath11k/pci.c
-+++ backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/pci.c
-@@ -13,6 +13,71 @@
+--- a/drivers/net/wireless/ath/ath11k/pci.c
++++ b/drivers/net/wireless/ath/ath11k/pci.c
+@@ -13,6 +13,83 @@
  #include "pci.h"
  #include "debug.h"
  
@@ -459,10 +457,22 @@ Index: backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/pci.
 +	ATH11K_REO_STATUS_RING_MASK_0,
 +};
 +
- const char *irq_name[ATH11K_IRQ_NUM_MAX] = {
- 	"bhi",
- 	"mhi-er0",
-@@ -488,6 +553,18 @@ int ath11k_get_user_msi_assignment(struc
++const char *dp_irq_name[ATH11K_MAX_PCI_DOMAINS + 1][ATH11K_EXT_IRQ_GRP_NUM_MAX] = {
++	{
++		ATH11K_PCI_DP_IRQS_NAME(0)
++	},
++	{
++		ATH11K_PCI_DP_IRQS_NAME(1)
++	},
++	{
++		ATH11K_PCI_DP_IRQS_NAME()
++	},
++};
++
+ const char *ce_irq_name[ATH11K_MAX_PCI_DOMAINS + 1][MAX_CE_COUNT] = {
+ 	{
+ 		ATH11K_PCI_CE_IRQS_NAME(0)
+@@ -446,6 +523,18 @@ int ath11k_get_user_msi_assignment(struc
  						 base_vector);
  }
  
@@ -481,7 +491,7 @@ Index: backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/pci.
  static void ath11k_pci_free_irq(struct ath11k_base *ab)
  {
  	int irq_idx;
-@@ -499,6 +576,8 @@ static void ath11k_pci_free_irq(struct a
+@@ -457,6 +546,8 @@ static void ath11k_pci_free_irq(struct a
  		irq_idx = ATH11K_IRQ_CE0_OFFSET + i;
  		free_irq(ab->irq_num[irq_idx], &ab->ce.ce_pipe[i]);
  	}
@@ -490,7 +500,7 @@ Index: backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/pci.
  }
  
  static void ath11k_pci_ce_irq_enable(struct ath11k_base *ab, u16 ce_id)
-@@ -555,12 +634,176 @@ static irqreturn_t ath11k_pci_ce_interru
+@@ -513,12 +604,181 @@ static irqreturn_t ath11k_pci_ce_interru
  {
  	struct ath11k_ce_pipe *ce_pipe = arg;
  
@@ -607,6 +617,11 @@ Index: backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/pci.
 +	int ret;
 +	int num_vectors = 0;
 +	u32 user_base_data = 0, base_vector = 0, base_idx;
++	struct ath11k_pci *ar_pci = ath11k_pci_priv(ab);
++	u8 domain_id = pci_domain_nr(ar_pci->pdev->bus);
++
++	if (domain_id > ATH11K_MAX_PCI_DOMAINS)
++		domain_id = ATH11K_MAX_PCI_DOMAINS;
 +
 +	ab->tx_ring_mask = ath11k_tx_ring_mask;
 +	ab->rx_mon_status_ring_mask = rx_mon_status_ring_mask;
@@ -650,10 +665,10 @@ Index: backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/pci.
 +
 +			ab->irq_num[irq_idx] = irq;
 +
-+			irq_set_status_flags(irq, IRQ_NOAUTOEN);
++			irq_set_status_flags(irq, IRQ_NOAUTOEN | IRQ_DISABLE_UNLAZY);
 +			ret = request_irq(irq, ath11k_pci_ext_interrupt_handler,
 +					  IRQF_SHARED | IRQF_NO_SUSPEND,
-+					  "DP_EXT_IRQ", irq_grp);
++					  dp_irq_name[domain_id][i], irq_grp);
 +			if (ret) {
 +				ath11k_err(ab, "failed request_irq for %d\n",
 +					   vector);
@@ -667,7 +682,7 @@ Index: backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/pci.
  static int ath11k_pci_config_irq(struct ath11k_base *ab)
  {
  	struct ath11k_ce_pipe *ce_pipe;
-@@ -600,7 +843,7 @@ static int ath11k_pci_config_irq(struct
+@@ -563,7 +823,7 @@ static int ath11k_pci_config_irq(struct
  		msi_data_idx++;
  	}
  
@@ -676,7 +691,7 @@ Index: backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/pci.
  
  	return ret;
  }
-@@ -904,6 +1147,8 @@ static const struct ath11k_hif_ops ath11
+@@ -867,6 +1127,8 @@ static const struct ath11k_hif_ops ath11
  	.write32 = ath11k_pci_write32,
  	.power_down = ath11k_pci_power_down,
  	.power_up = ath11k_pci_power_up,
@@ -685,3 +700,74 @@ Index: backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/pci.
  	.get_msi_address =  ath11k_pci_get_msi_address,
  	.get_user_msi_vector = ath11k_get_user_msi_assignment,
  	.map_service_to_pipe = ath11k_pci_map_service_to_pipe,
+--- a/drivers/net/wireless/ath/ath11k/hal.c
++++ b/drivers/net/wireless/ath/ath11k/hal.c
+@@ -507,6 +507,8 @@ void ath11k_hal_srng_get_params(struct a
+ 		srng->intr_batch_cntr_thres_entries;
+ 	params->low_threshold = srng->u.src_ring.low_threshold;
+ 	params->flags = srng->flags;
++	params->msi_addr = srng->msi_addr;
++	params->msi_data = srng->msi_data;
+ }
+ 
+ dma_addr_t ath11k_hal_srng_get_hp_addr(struct ath11k_base *ab,
+--- a/drivers/net/wireless/ath/ath11k/pci.h
++++ b/drivers/net/wireless/ath/ath11k/pci.h
+@@ -30,6 +30,21 @@
+ 
+ #define STR_CONV(str) #str
+ 
++/* dp irq naming convention is based on the ext irq groups defined in pci.c */
++#define ATH11K_PCI_DP_IRQS_NAME(x) \
++	STR_CONV(pci##x##_wbm2host_tx_completions_ring1),\
++	STR_CONV(pci##x##_wbm2host_tx_completions_ring2),\
++	STR_CONV(pci##x##_wbm2host_tx_completions_ring3),\
++	STR_CONV(pci##x##_lmac_reo_misc_irq),\
++	STR_CONV(pci##x##_reo2host_destination_ring1),\
++	STR_CONV(pci##x##_reo2host_destination_ring2),\
++	STR_CONV(pci##x##_reo2host_destination_ring3),\
++	STR_CONV(pci##x##_reo2host_destination_ring4),\
++	/* Currently only 8 msi are registered */ \
++	STR_CONV(pci##x##_dp_res1),\
++	STR_CONV(pci##x##_dp_res2),\
++	STR_CONV(pci##x##_dp_res3),
++
+ #define ATH11K_PCI_CE_IRQS_NAME(x) \
+ 	STR_CONV(pci##x##_ce0),\
+ 	STR_CONV(pci##x##_ce1),\
+--- a/drivers/net/wireless/ath/ath11k/core.c
++++ b/drivers/net/wireless/ath/ath11k/core.c
+@@ -39,6 +39,7 @@ static const struct ath11k_hw_params ath
+ 		.spectral_fft_sz = 2,
+ 		.max_radios = 3,
+ 		.bdf_addr = 0x4B0C0000,
++		.mon_status_intr_threshold = 0,
+ 		.bdf_sz = ATH11K_QMI_BDF_MAX_SIZE,
+ 		.caldb_sz = ATH11K_QMI_CALDB_SIZE_IPQ807X,
+ 		.hal_desc_sz = sizeof(struct hal_rx_desc_ipq8074),
+@@ -56,6 +57,7 @@ static const struct ath11k_hw_params ath
+ 		.spectral_fft_sz = 4,
+ 		.max_radios = 2,
+ 		.bdf_addr = 0x4ABC0000,
++		.mon_status_intr_threshold = 0,
+ 		.bdf_sz = ATH11K_QMI_BDF_MAX_SIZE,
+ 		.caldb_sz = ATH11K_QMI_CALDB_SIZE_IPQ807X,
+ 		.hal_desc_sz = sizeof(struct hal_rx_desc_ipq8074),
+@@ -72,6 +74,7 @@ static const struct ath11k_hw_params ath
+ 		},
+ 		.max_radios = 1,
+ 		.bdf_addr = 0x54800000,
++		.mon_status_intr_threshold = 4,
+ 		.bdf_sz = ATH11K_QMI_HOST_FWADDR_SZ_QCN9000,
+ 		.caldb_sz = ATH11K_QMI_CALDB_SIZE_QCN9000,
+ 		.hal_desc_sz = sizeof(struct hal_rx_desc_qcn9000),
+--- a/drivers/net/wireless/ath/ath11k/hw.h
++++ b/drivers/net/wireless/ath/ath11k/hw.h
+@@ -159,6 +159,7 @@ struct ath11k_hw_params {
+ 	u16 dev_id;
+ 	u8 max_radios;
+ 	u32 bdf_addr;
++	u32 mon_status_intr_threshold;
+ 	u32 bdf_sz;
+ 	u32 caldb_sz;
+ 	struct {

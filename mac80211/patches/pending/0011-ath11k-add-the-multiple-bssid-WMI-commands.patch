@@ -1,4 +1,4 @@
-From bacdc4672bba436c833a95a1fb761ea8c7546644 Mon Sep 17 00:00:00 2001
+From 7dbe9261f5539a4627c3f92b36242cd704d0edd2 Mon Sep 17 00:00:00 2001
 From: John Crispin <john@phrozen.org>
 Date: Wed, 12 Aug 2020 15:17:46 +0200
 Subject: [PATCH 11/14] ath11k: add the multiple bssid WMI commands

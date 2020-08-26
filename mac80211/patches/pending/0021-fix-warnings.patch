@@ -1,34 +1,8 @@
-Index: backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/Makefile
-===================================================================
---- backports-20200628-4.4.60-9a94b73e75.orig/drivers/net/wireless/ath/ath11k/Makefile
-+++ backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/Makefile
-@@ -25,7 +25,7 @@ ath11k-$(CPTCFG_ATH11K_TRACING) += trace
- ath11k-$(CONFIG_THERMAL) += thermal.o
- ath11k-$(CPTCFG_ATH11K_SPECTRAL) += spectral.o
- ath11k-$(CPTCFG_ATH11K_PKTLOG) += pktlog.o
--ath11k-$(CPTCFG_WANT_DEV_COREDUMP) += coredump.o
-+#ath11k-$(CPTCFG_WANT_DEV_COREDUMP) += coredump.o
- 
- obj-$(CPTCFG_ATH11K_AHB) += ath11k_ahb.o
- ath11k_ahb-y += ahb.o
-Index: backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/core.c
-===================================================================
---- backports-20200628-4.4.60-9a94b73e75.orig/drivers/net/wireless/ath/ath11k/core.c
-+++ backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/core.c
-@@ -870,7 +870,7 @@ static void ath11k_core_reset(struct wor
- 	ab->is_reset = true;
- 
- 	/* prepare coredump */
--	ath11k_coredump_download_rddm(ab);
-+	//ath11k_coredump_download_rddm(ab);
- 
- 	ath11k_hif_power_down(ab);
- 	ath11k_hif_power_up(ab);
 Index: backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/debug.c
 ===================================================================
 --- backports-20200628-4.4.60-9a94b73e75.orig/drivers/net/wireless/ath/ath11k/debug.c
 +++ backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/debug.c
-@@ -1132,7 +1132,7 @@ static const struct file_operations fops
+@@ -1206,7 +1206,7 @@ static const struct file_operations fops
  };
  
  static ssize_t ath11k_debug_write_fw_recovery(struct file *file,
@@ -37,24 +11,16 @@ Index: backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/debu
                                                size_t count, loff_t *ppos)
  {
         struct ath11k_base *ab = file->private_data;
-Index: backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/Kconfig
+Index: backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/core.h
 ===================================================================
---- backports-20200628-4.4.60-9a94b73e75.orig/drivers/net/wireless/ath/ath11k/Kconfig
-+++ backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/Kconfig
-@@ -21,11 +21,11 @@ config ATH11K_AHB
- 	---help---
- 	  This module adds support for AHB bus
+--- backports-20200628-4.4.60-9a94b73e75.orig/drivers/net/wireless/ath/ath11k/core.h
++++ backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/core.h
+@@ -410,7 +410,7 @@ struct ath11k_sta {
  
--config ATH11K_PCI
--	tristate "ath11k PCI support"
--	depends on ATH11K && PCI
--	---help---
--	  This module adds support for PCIE bus
-+#config ATH11K_PCI
-+#	tristate "ath11k PCI support"
-+#	depends on ATH11K && PCI
-+#	---help---
-+#	  This module adds support for PCIE bus
+ #define ATH11K_MIN_5G_FREQ 4150
+ #define ATH11K_MIN_6G_FREQ 5925
+-#define ATH11K_MAX_6G_FREQ 7115
++#define ATH11K_MAX_6G_FREQ 7105
+ #define ATH11K_NUM_CHANS 101
+ #define ATH11K_MAX_5G_CHAN 173
  
- config ATH11K_DEBUG
- 	bool "QCA ath11k debugging"

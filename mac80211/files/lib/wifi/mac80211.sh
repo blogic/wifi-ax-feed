@@ -92,6 +92,12 @@ detect_mac80211() {
 			iw phy "$dev" info | grep -q 'VHT Capabilities' && htmode="VHT80"
 			iw phy "$dev" info | grep -q 'HE.*Capabilities' && htmode="HE80"
 		}
+		
+		iw phy "$dev" info | grep -q '5955 MHz' && {
+			mode_band="a"
+			channel="1"
+			htmode="HE80"
+		}
 
 		[ -n "$htmode" ] && ht_capab="set wireless.radio${devidx}.htmode=$htmode"
 

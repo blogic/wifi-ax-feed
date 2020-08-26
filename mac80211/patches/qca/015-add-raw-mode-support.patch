@@ -250,7 +250,46 @@ Signed-off-by: Manikanta Pubbisetty <mpubbise@codeaurora.org>
  	if (ret) {
 --- a/drivers/net/wireless/ath/ath11k/wmi.c
 +++ b/drivers/net/wireless/ath/ath11k/wmi.c
-@@ -3362,6 +3362,10 @@ int ath11k_wmi_cmd_init(struct ath11k_ba
+@@ -858,6 +858,8 @@ int ath11k_wmi_vdev_start(struct ath11k
+ 	}
+ 
+ 	cmd->flags |= WMI_VDEV_START_LDPC_RX_ENABLED;
++	if (test_bit(ATH11K_FLAG_HW_CRYPTO_DISABLED, &ar->ab->dev_flags))
++		cmd->flags |= WMI_VDEV_START_HW_ENCRYPTION_DISABLED;
+ 
+ 	ptr = skb->data + sizeof(*cmd);
+ 	chan = ptr;
+@@ -1678,7 +1680,8 @@ int ath11k_wmi_vdev_install_key(struct a
+ 
+ static inline void
+ ath11k_wmi_copy_peer_flags(struct wmi_peer_assoc_complete_cmd *cmd,
+-			   struct peer_assoc_params *param)
++			   struct peer_assoc_params *param,
++			   bool hw_crypto_disabled)
+ {
+ 	cmd->peer_flags = 0;
+ 
+@@ -1732,7 +1735,8 @@ ath11k_wmi_copy_peer_flags(struct wmi_pe
+ 		cmd->peer_flags |= WMI_PEER_AUTH;
+ 	if (param->need_ptk_4_way) {
+ 		cmd->peer_flags |= WMI_PEER_NEED_PTK_4_WAY;
+-		cmd->peer_flags &= ~WMI_PEER_AUTH;
++		if (!hw_crypto_disabled)
++			cmd->peer_flags &= ~WMI_PEER_AUTH;
+ 	}
+ 	if (param->need_gtk_2_way)
+ 		cmd->peer_flags |= WMI_PEER_NEED_GTK_2_WAY;
+@@ -1799,7 +1803,8 @@ int ath11k_wmi_send_peer_assoc_cmd(struc
+ 	cmd->peer_new_assoc = param->peer_new_assoc;
+ 	cmd->peer_associd = param->peer_associd;
+ 
+-	ath11k_wmi_copy_peer_flags(cmd, param);
++	ath11k_wmi_copy_peer_flags(cmd, param,
++				   test_bit(ATH11K_FLAG_HW_CRYPTO_DISABLED, &ar->ab->dev_flags));
+ 
+ 	ether_addr_copy(cmd->peer_macaddr.addr, param->peer_mac);
+ 
+@@ -3362,6 +3367,10 @@ int ath11k_wmi_cmd_init(struct ath11k_ba
  	config.rx_timeout_pri[2] = TARGET_RX_TIMEOUT_LO_PRI;
  	config.rx_timeout_pri[3] = TARGET_RX_TIMEOUT_HI_PRI;
  	config.rx_decap_mode = TARGET_DECAP_MODE_NATIVE_WIFI;
@@ -272,3 +311,13 @@ Signed-off-by: Manikanta Pubbisetty <mpubbise@codeaurora.org>
  	ATH11K_DBG_ANY		= 0xffffffff,
  };
  
+--- a/drivers/net/wireless/ath/ath11k/wmi.h
++++ b/drivers/net/wireless/ath/ath11k/wmi.h
+@@ -2502,6 +2502,7 @@ struct wmi_vdev_down_cmd {
+ #define WMI_VDEV_START_HIDDEN_SSID  BIT(0)
+ #define WMI_VDEV_START_PMF_ENABLED  BIT(1)
+ #define WMI_VDEV_START_LDPC_RX_ENABLED BIT(3)
++#define WMI_VDEV_START_HW_ENCRYPTION_DISABLED BIT(4)
+ 
+ struct wmi_ssid {
+ 	u32 ssid_len;

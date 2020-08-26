@@ -1,9 +1,9 @@
-From cfb121f7cec15e6ff3b77e787a82b115f2d43eb2 Mon Sep 17 00:00:00 2001
+From 5405bc3ef32a5c8314e2cdae13b00582a186cc05 Mon Sep 17 00:00:00 2001
 From: John Crispin <john@phrozen.org>
 Date: Mon, 3 Aug 2020 11:45:20 +0200
-Subject: [PATCH 2/5] mac80211: rename csa counters to countdown counters
+Subject: [PATCH 02/14] mac80211: rename csa counters to countdown counters
 
-We want to reuse the functions and structs for other counters such as
+We want to reuse the functions and structs for other counters such as BSS
 color change. Rename them to more generic names.
 
 Signed-off-by: John Crispin <john@phrozen.org>
@@ -29,34 +29,6 @@ Signed-off-by: John Crispin <john@phrozen.org>
  net/mac80211/tx.c                             | 73 ++++++++++---------
  19 files changed, 93 insertions(+), 93 deletions(-)
 
-diff --git a/drivers/net/wireless/ath/ath10k/mac.c b/drivers/net/wireless/ath/ath10k/mac.c
-index 3c0c33a9f30c..b37902222517 100644
---- a/drivers/net/wireless/ath/ath10k/mac.c
-+++ b/drivers/net/wireless/ath/ath10k/mac.c
-@@ -2019,8 +2019,8 @@ static void ath10k_mac_vif_ap_csa_count_down(struct ath10k_vif *arvif)
- 	if (!arvif->is_up)
- 		return;
- 
--	if (!ieee80211_csa_is_complete(vif)) {
--		ieee80211_csa_update_counter(vif);
-+	if (!ieee80211_beacon_cntdwn_is_complete(vif)) {
-+		ieee80211_beacon_update_cntdwn(vif);
- 
- 		ret = ath10k_mac_setup_bcn_tmpl(arvif);
- 		if (ret)
-diff --git a/drivers/net/wireless/ath/ath10k/wmi.c b/drivers/net/wireless/ath/ath10k/wmi.c
-index a81a1ab2de19..b661d4ec5d52 100644
---- a/drivers/net/wireless/ath/ath10k/wmi.c
-+++ b/drivers/net/wireless/ath/ath10k/wmi.c
-@@ -3878,7 +3878,7 @@ void ath10k_wmi_event_host_swba(struct ath10k *ar, struct sk_buff *skb)
- 		 * actual channel switch is done
- 		 */
- 		if (arvif->vif->csa_active &&
--		    ieee80211_csa_is_complete(arvif->vif)) {
-+		    ieee80211_beacon_cntdwn_is_complete(arvif->vif)) {
- 			ieee80211_csa_finish(arvif->vif);
- 			continue;
- 		}
 diff --git a/drivers/net/wireless/ath/ath11k/wmi.c b/drivers/net/wireless/ath/ath11k/wmi.c
 index 8e3437a65673..9fffa37f1e2e 100644
 --- a/drivers/net/wireless/ath/ath11k/wmi.c
@@ -72,32 +44,6 @@ index 8e3437a65673..9fffa37f1e2e 100644
  	cmd->buf_len = bcn->len;
  
  	ptr = skb->data + sizeof(*cmd);
-diff --git a/drivers/net/wireless/ath/ath9k/beacon.c b/drivers/net/wireless/ath/ath9k/beacon.c
-index e36f947e19fc..b17cb9158544 100644
---- a/drivers/net/wireless/ath/ath9k/beacon.c
-+++ b/drivers/net/wireless/ath/ath9k/beacon.c
-@@ -365,7 +365,7 @@ bool ath9k_csa_is_finished(struct ath_softc *sc, struct ieee80211_vif *vif)
- 	if (!vif || !vif->csa_active)
- 		return false;
- 
--	if (!ieee80211_csa_is_complete(vif))
-+	if (!ieee80211_beacon_counter_is_complete(vif))
- 		return false;
- 
- 	ieee80211_csa_finish(vif);
-diff --git a/drivers/net/wireless/ath/ath9k/htc_drv_beacon.c b/drivers/net/wireless/ath/ath9k/htc_drv_beacon.c
-index f20c839aeda2..346967f1f8ad 100644
---- a/drivers/net/wireless/ath/ath9k/htc_drv_beacon.c
-+++ b/drivers/net/wireless/ath/ath9k/htc_drv_beacon.c
-@@ -514,7 +514,7 @@ bool ath9k_htc_csa_is_finished(struct ath9k_htc_priv *priv)
- 	if (!vif || !vif->csa_active)
- 		return false;
- 
--	if (!ieee80211_csa_is_complete(vif))
-+	if (!ieee80211_beacon_counter_is_complete(vif))
- 		return false;
- 
- 	ieee80211_csa_finish(vif);
 diff --git a/include/net/mac80211.h b/include/net/mac80211.h
 index 66e2bfd165e8..ec148b3e9c41 100644
 --- a/include/net/mac80211.h
@@ -196,7 +142,7 @@ index 66e2bfd165e8..ec148b3e9c41 100644
  /**
   * ieee80211_proberesp_get - retrieve a Probe Response template
 diff --git a/net/mac80211/cfg.c b/net/mac80211/cfg.c
-index 24e9e00decb8..b1a8a2d06f58 100644
+index 87fddd84c621..b4e39e31a985 100644
 --- a/net/mac80211/cfg.c
 +++ b/net/mac80211/cfg.c
 @@ -826,9 +826,9 @@ static int ieee80211_set_probe_resp(struct ieee80211_sub_if_data *sdata,
@@ -225,7 +171,7 @@ index 24e9e00decb8..b1a8a2d06f58 100644
  	}
  
  	/* copy in head */
-@@ -3185,9 +3185,9 @@ static int ieee80211_set_csa_beacon(struct ieee80211_sub_if_data *sdata,
+@@ -3186,9 +3186,9 @@ static int ieee80211_set_csa_beacon(struct ieee80211_sub_if_data *sdata,
  			break;
  
  		if ((params->n_counter_offsets_beacon >
@@ -290,10 +236,10 @@ index b4a2efe8e83a..523380aed92e 100644
  	/*
  	 * We use the number of queues for feature tests (QoS, HT) internally
 diff --git a/net/mac80211/mesh.c b/net/mac80211/mesh.c
-index d0db6af16427..259766ec6bb0 100644
+index 7ecd801a943b..5ae003324426 100644
 --- a/net/mac80211/mesh.c
 +++ b/net/mac80211/mesh.c
-@@ -851,8 +851,8 @@ ieee80211_mesh_build_beacon(struct ieee80211_if_mesh *ifmsh)
+@@ -864,8 +864,8 @@ ieee80211_mesh_build_beacon(struct ieee80211_if_mesh *ifmsh)
  		*pos++ = 0x0;
  		*pos++ = ieee80211_frequency_to_channel(
  				csa->settings.chandef.chan->center_freq);
@@ -318,10 +264,10 @@ index f470d1a7ce9b..1ac7b8c374c9 100644
  		rcu_read_unlock();
  	}
 diff --git a/net/mac80211/tx.c b/net/mac80211/tx.c
-index ec35a92df8ed..043fd6d637b3 100644
+index dca01d7e6e3e..d2136007e2eb 100644
 --- a/net/mac80211/tx.c
 +++ b/net/mac80211/tx.c
-@@ -4537,14 +4537,14 @@ static int ieee80211_beacon_add_tim(struct ieee80211_sub_if_data *sdata,
+@@ -4538,14 +4538,14 @@ static int ieee80211_beacon_add_tim(struct ieee80211_sub_if_data *sdata,
  	return 0;
  }
  
@@ -339,7 +285,7 @@ index ec35a92df8ed..043fd6d637b3 100644
  
  	switch (sdata->vif.type) {
  	case NL80211_IFTYPE_AP:
-@@ -4564,36 +4564,36 @@ static void ieee80211_set_csa(struct ieee80211_sub_if_data *sdata,
+@@ -4565,36 +4565,36 @@ static void ieee80211_set_csa(struct ieee80211_sub_if_data *sdata,
  	}
  
  	rcu_read_lock();
@@ -386,7 +332,7 @@ index ec35a92df8ed..043fd6d637b3 100644
  {
  	struct ieee80211_sub_if_data *sdata = vif_to_sdata(vif);
  	struct beacon_data *beacon = NULL;
-@@ -4611,15 +4611,15 @@ u8 ieee80211_csa_update_counter(struct ieee80211_vif *vif)
+@@ -4612,15 +4612,15 @@ u8 ieee80211_csa_update_counter(struct ieee80211_vif *vif)
  	if (!beacon)
  		goto unlock;
  
@@ -405,7 +351,7 @@ index ec35a92df8ed..043fd6d637b3 100644
  {
  	struct ieee80211_sub_if_data *sdata = vif_to_sdata(vif);
  	struct beacon_data *beacon = NULL;
-@@ -4636,15 +4636,15 @@ void ieee80211_csa_set_counter(struct ieee80211_vif *vif, u8 counter)
+@@ -4637,15 +4637,15 @@ void ieee80211_csa_set_counter(struct ieee80211_vif *vif, u8 counter)
  	if (!beacon)
  		goto unlock;
  
@@ -425,7 +371,7 @@ index ec35a92df8ed..043fd6d637b3 100644
  {
  	struct ieee80211_sub_if_data *sdata = vif_to_sdata(vif);
  	struct beacon_data *beacon = NULL;
-@@ -4687,20 +4687,21 @@ bool ieee80211_csa_is_complete(struct ieee80211_vif *vif)
+@@ -4688,20 +4688,21 @@ bool ieee80211_csa_is_complete(struct ieee80211_vif *vif)
  		goto out;
  	}
  
@@ -451,7 +397,7 @@ index ec35a92df8ed..043fd6d637b3 100644
  
  static int ieee80211_beacon_protect(struct sk_buff *skb,
  				    struct ieee80211_local *local,
-@@ -4760,11 +4761,11 @@ __ieee80211_beacon_get(struct ieee80211_hw *hw,
+@@ -4761,11 +4762,11 @@ __ieee80211_beacon_get(struct ieee80211_hw *hw,
  
  		beacon = rcu_dereference(ap->beacon);
  		if (beacon) {
@@ -462,11 +408,11 @@ index ec35a92df8ed..043fd6d637b3 100644
 +					ieee80211_beacon_update_cntdwn(vif);
  
 -				ieee80211_set_csa(sdata, beacon);
-+	                        ieee80211_set_beacon_cntdwn(sdata, beacon);
++				ieee80211_set_beacon_cntdwn(sdata, beacon);
  			}
  
  			/*
-@@ -4808,11 +4809,11 @@ __ieee80211_beacon_get(struct ieee80211_hw *hw,
+@@ -4809,11 +4810,11 @@ __ieee80211_beacon_get(struct ieee80211_hw *hw,
  		if (!beacon)
  			goto out;
  
@@ -481,7 +427,7 @@ index ec35a92df8ed..043fd6d637b3 100644
  		}
  
  		skb = dev_alloc_skb(local->tx_headroom + beacon->head_len +
-@@ -4832,16 +4833,16 @@ __ieee80211_beacon_get(struct ieee80211_hw *hw,
+@@ -4833,16 +4834,16 @@ __ieee80211_beacon_get(struct ieee80211_hw *hw,
  		if (!beacon)
  			goto out;
  
@@ -501,7 +447,7 @@ index ec35a92df8ed..043fd6d637b3 100644
  		}
  
  		if (ifmsh->sync_ops)
-@@ -4873,13 +4874,13 @@ __ieee80211_beacon_get(struct ieee80211_hw *hw,
+@@ -4874,13 +4875,13 @@ __ieee80211_beacon_get(struct ieee80211_hw *hw,
  	if (offs && beacon) {
  		int i;
  

@@ -18,25 +18,21 @@ Signed-off-by: Ramya Gnanasekar <rgnanase@codeaurora.org>
  drivers/net/wireless/ath/ath11k/debug.c | 46 +++++++++++++++++++++++++++++++++
  3 files changed, 49 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/net/wireless/ath/ath11k/core.c b/drivers/net/wireless/ath/ath11k/core.c
-index 4962a9e..5a04191 100644
 --- a/drivers/net/wireless/ath/ath11k/core.c
 +++ b/drivers/net/wireless/ath/ath11k/core.c
-@@ -620,7 +620,8 @@ int ath11k_core_ssr_notifier_cb(struct notifier_block *nb, unsigned long event,
+@@ -618,7 +618,8 @@ int ath11k_core_ssr_notifier_cb(struct n
  	/* TODO Add more driver stats */
  
  	/* Crash the system once all the stats are dumped */
 -	BUG_ON(1);
 +	if(!qmi->ab->fw_recovery_support)
 +		BUG_ON(1);
- }
- #endif
  
-diff --git a/drivers/net/wireless/ath/ath11k/core.h b/drivers/net/wireless/ath/ath11k/core.h
-index f3da827..9dd3a63 100644
+ 	return 0;
+ }
 --- a/drivers/net/wireless/ath/ath11k/core.h
 +++ b/drivers/net/wireless/ath/ath11k/core.h
-@@ -843,6 +843,7 @@ struct ath11k_base {
+@@ -838,6 +838,7 @@ struct ath11k_base {
  	const struct hal_srng_regs *srng_regs;
  	u32 sw_pdev_id_map[MAX_RADIOS];
  	u32 hw_pdev_id_map[MAX_RADIOS];
@@ -44,11 +40,17 @@ index f3da827..9dd3a63 100644
  	/* must be last */
  	u8 drv_priv[0] __aligned(sizeof(void *));
  };
-diff --git a/drivers/net/wireless/ath/ath11k/debug.c b/drivers/net/wireless/ath/ath11k/debug.c
-index ce89918..c8d863a 100644
+@@ -986,6 +987,7 @@ void ath11k_core_free_bdf(struct ath11k_
+ 
+ void ath11k_core_halt(struct ath11k *ar);
+ int ath11k_core_pre_init(struct ath11k_base *ab);
++void ath11k_core_dump_bp_stats(struct ath11k_base *ab);
+ void ath11k_coredump_qdss_dump(struct ath11k_base *ab,
+ 			       struct ath11k_qmi_event_qdss_trace_save_data *event_data);
+ 
 --- a/drivers/net/wireless/ath/ath11k/debug.c
 +++ b/drivers/net/wireless/ath/ath11k/debug.c
-@@ -1159,6 +1159,48 @@ static const struct file_operations fops_soc_dp_stats = {
+@@ -1204,6 +1204,48 @@ static const struct file_operations fops
  	.llseek = default_llseek,
  };
  
@@ -97,9 +99,9 @@ index ce89918..c8d863a 100644
  int ath11k_debug_pdev_create(struct ath11k_base *ab)
  {
  	char soc_name[11] = {0};
-@@ -1186,6 +1228,10 @@ int ath11k_debug_pdev_create(struct ath11k_base *ab)
- 	debugfs_create_file("soc_ring_stats", 0600, ab->debugfs_soc, ab,
- 			    &fops_soc_ring_stats);
+@@ -1231,6 +1273,10 @@ int ath11k_debug_pdev_create(struct ath1
+ 	debugfs_create_file("soc_dp_stats", 0600, ab->debugfs_soc, ab,
+ 			    &fops_soc_dp_stats);
  
 +	debugfs_create_file("set_fw_recovery", 0600, ab->debugfs_soc, ab,
 +			    &fops_fw_recovery);
@@ -108,6 +110,109 @@ index ce89918..c8d863a 100644
  	return 0;
  }
  
--- 
-2.7.4
-
+--- a/drivers/net/wireless/ath/ath11k/pci.c
++++ b/drivers/net/wireless/ath/ath11k/pci.c
+@@ -1213,6 +1213,8 @@ static int ath11k_pci_probe(struct pci_d
+ 		ab->fixed_mem_region = false;
+ 	}
+ 
++	ab->fw_recovery_support = false;
++
+ 	spin_lock_init(&ar_pci->window_lock);
+ 
+ 	ret = ath11k_pci_claim(ar_pci, pdev);
+--- a/drivers/net/wireless/ath/ath11k/coredump.c
++++ b/drivers/net/wireless/ath/ath11k/coredump.c
+@@ -15,6 +15,9 @@
+ #include "pci.h"
+ #include "debug.h"
+ 
++struct ath11k_coredump_segment_info ath11k_coredump_seg_info;
++EXPORT_SYMBOL(ath11k_coredump_seg_info);
++
+ static void *ath11k_coredump_find_segment(loff_t user_offset,
+ 					  struct ath11k_dump_segment *segment,
+ 					  int phnum, size_t *data_left)
+@@ -177,9 +180,10 @@ void ath11k_coredump_download_rddm(struc
+ 		seg_info->len = PAGE_ALIGN(seg_sz);
+ 		seg_info->addr = fw_img->mhi_buf[i].dma_addr;
+ 		seg_info->vaddr = fw_img->mhi_buf[i].buf;
+-		ath11k_info(ab, "seg vaddr is %px len is 0x%x\n",
+-					seg_info->vaddr, seg_info->len);
+ 		seg_info->type = ATH11K_FW_CRASH_PAGING_DATA;
++		ath11k_info(ab, "seg vaddr is %px len is 0x%x type %d\n",
++			    seg_info->vaddr, seg_info->len, seg_info->type);
++
+ 		seg_info++;
+ 	}
+ 
+@@ -188,8 +192,8 @@ void ath11k_coredump_download_rddm(struc
+ 		seg_info->len = PAGE_ALIGN(seg_sz);
+ 		seg_info->addr = rddm_img->mhi_buf[i].dma_addr;
+ 		seg_info->vaddr = rddm_img->mhi_buf[i].buf;
+-		ath11k_info(ab, "seg vaddr is %px len is 0x%x\n",
+-					seg_info->vaddr, seg_info->len);
++		ath11k_info(ab, "seg vaddr is %px len is 0x%x type %d\n",
++			    seg_info->vaddr, seg_info->len, seg_info->type);
+ 		seg_info->type = ATH11K_FW_CRASH_RDDM_DATA;
+ 		seg_info++;
+ 	}
+@@ -200,8 +204,8 @@ void ath11k_coredump_download_rddm(struc
+ 		seg_info->len = ab->qmi.target_mem[i].size;
+ 		seg_info->addr = ab->qmi.target_mem[i].paddr;
+ 		seg_info->vaddr = ab->qmi.target_mem[i].vaddr;
+-		ath11k_info(ab, "seg vaddr is %px len is 0x%x\n",
+-					seg_info->vaddr, seg_info->len);
++		ath11k_info(ab, "seg vaddr is %px len is 0x%x type %d\n",
++			    seg_info->vaddr, seg_info->len, seg_info->type);
+ 		seg_info->type = ATH11K_FW_REMOTE_MEM_DATA;
+ 		seg_info++;
+ 	}
+@@ -210,13 +214,28 @@ void ath11k_coredump_download_rddm(struc
+ 		seg_info->len = ab->qmi.qdss_mem[0].size;
+ 		seg_info->addr = ab->qmi.qdss_mem[0].paddr;
+ 		seg_info->vaddr = ab->qmi.qdss_mem[0].vaddr;
+-		ath11k_dbg(ab, ATH11K_DBG_QMI, "seg vaddr is %px len is 0x%x\n",
+-			   seg_info->vaddr, seg_info->len);
++		ath11k_dbg(ab, ATH11K_DBG_QMI, "seg vaddr is %px len is 0x%x type %d\n",
++			   seg_info->vaddr, seg_info->len, seg_info->type);
+ 		seg_info->type = ATH11K_FW_QDSS_DATA;
+ 		seg_info++;
+ 	}
+ 
+-	ath11k_coredump_build_inline(ar_pci, segment, num_seg);
++	/* Crash the system once all the stats are dumped */
++	if(!ab->fw_recovery_support) {
++		ath11k_core_dump_bp_stats(ab);
++		ath11k_hal_dump_srng_stats(ab);
++
++		ath11k_coredump_seg_info.chip_id = ar_pci->dev_id;
++		ath11k_coredump_seg_info.qrtr_id = ar_pci->ab->qmi.service_ins_id;
++		ath11k_coredump_seg_info.bus_id = pci_domain_nr(ar_pci->pdev->bus);
++		ath11k_coredump_seg_info.num_seg = num_seg;
++		ath11k_coredump_seg_info.seg = segment;
++
++		BUG_ON(1);
++	} else {
++		ath11k_coredump_build_inline(ar_pci, segment, num_seg);
++	}
++
+ 	vfree(segment);
+ }
+ 
+--- a/drivers/net/wireless/ath/ath11k/coredump.h
++++ b/drivers/net/wireless/ath/ath11k/coredump.h
+@@ -58,6 +58,13 @@ struct ath11k_coredump_state {
+ 	u32 num_seg;
+ };
+ 
++struct ath11k_coredump_segment_info {
++	u32 chip_id;
++	u32 qrtr_id;
++	u32 num_seg;
++	struct ath11k_dump_segment *seg;
++	u8 bus_id;
++}; 
+ 
+ void ath11k_coredump_download_rddm(struct ath11k_base *ab);
+ 

@@ -1,7 +1,7 @@
 From d35fe5652bf9deb8bed84b458cf2bcc6799e4c17 Mon Sep 17 00:00:00 2001
 From: John Crispin <john@phrozen.org>
 Date: Wed, 3 Jun 2020 16:33:55 +0200
-Subject: [PATCH 820/824] multiple_bssid: add support for non/transmitting mode
+Subject: [PATCH 802/820] multiple_bssid: add support for non/transmitting mode
 
 When starting the non-transmitting BSSs we need to let if_add() known what
 the bss_index and bss_parent are.

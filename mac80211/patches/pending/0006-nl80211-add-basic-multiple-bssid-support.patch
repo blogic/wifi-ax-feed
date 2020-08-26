@@ -1,4 +1,4 @@
-From 05c3926055e2e287270da92ea8951bd0e9909a80 Mon Sep 17 00:00:00 2001
+From aefd07dcaa0d84da08f9a7d5595c9585f11781e0 Mon Sep 17 00:00:00 2001
 From: John Crispin <john@phrozen.org>
 Date: Wed, 12 Aug 2020 14:14:01 +0200
 Subject: [PATCH 06/14] nl80211: add basic multiple bssid support
@@ -16,15 +16,14 @@ Signed-off-by: John Crispin <john@phrozen.org>
  net/wireless/nl80211.c       | 40 ++++++++++++++++++++++++++++++++++++
  3 files changed, 97 insertions(+)
 
-diff --git a/include/net/cfg80211.h b/include/net/cfg80211.h
-index 541dea0fd571..0b0c730dc8d2 100644
---- a/include/net/cfg80211.h
-+++ b/include/net/cfg80211.h
-@@ -470,6 +470,21 @@ struct ieee80211_supported_band {
- 	const struct ieee80211_sband_iftype_data *iftype_data;
+Index: backports-20200628-4.4.60-9a94b73e75/include/net/cfg80211.h
+===================================================================
+--- backports-20200628-4.4.60-9a94b73e75.orig/include/net/cfg80211.h
++++ backports-20200628-4.4.60-9a94b73e75/include/net/cfg80211.h
+@@ -456,6 +456,21 @@ struct ieee80211_supported_band {
  };
  
-+/**
+ /**
 + * struct ieee80211_multiple_bssid - AP settings for multi bssid
 + *
 + * @index: the index of this AP in the multi bssid group.
@@ -39,10 +38,11 @@ index 541dea0fd571..0b0c730dc8d2 100644
 +	bool non_transmitted;
 +};
 +
- /**
++/**
   * ieee80211_get_sband_iftype_data - return sband data for a given iftype
   * @sband: the sband to search for the STA on
-@@ -614,6 +629,7 @@ static inline void wiphy_read_of_freq_limits(struct wiphy *wiphy)
+  * @iftype: enum nl80211_iftype
+@@ -599,6 +614,7 @@ static inline void wiphy_read_of_freq_li
   *	belonging to that MU-MIMO groupID; %NULL if not changed
   * @vht_mumimo_follow_addr: MU-MIMO follow address, used for monitoring
   *	MU-MIMO packets going to the specified station; %NULL if not changed
@@ -50,7 +50,7 @@ index 541dea0fd571..0b0c730dc8d2 100644
   */
  struct vif_params {
  	u32 flags;
-@@ -621,6 +637,7 @@ struct vif_params {
+@@ -606,6 +622,7 @@ struct vif_params {
  	u8 macaddr[ETH_ALEN];
  	const u8 *vht_mumimo_groups;
  	const u8 *vht_mumimo_follow_addr;
@@ -58,11 +58,10 @@ index 541dea0fd571..0b0c730dc8d2 100644
  };
  
  /**
-@@ -998,6 +1015,19 @@ struct cfg80211_crypto_settings {
- 	u8 sae_pwd_len;
+@@ -987,6 +1004,19 @@ struct cfg80211_crypto_settings {
  };
  
-+/**
+ /**
 + * struct cfg80211_multiple_bssid_data - multiple_bssid data
 + * @ies: array of extra information element(s) to add into Beacon frames for multiple
 + *	bssid or %NULL
@@ -75,10 +74,11 @@ index 541dea0fd571..0b0c730dc8d2 100644
 +	int cnt;
 +};
 +
- /**
++/**
   * struct cfg80211_beacon_data - beacon data
   * @head: head portion of beacon (before TIM IE)
-@@ -1024,6 +1054,7 @@ struct cfg80211_crypto_settings {
+  *	or %NULL if not changed
+@@ -1012,6 +1042,7 @@ struct cfg80211_crypto_settings {
   *	Token (measurement type 11)
   * @lci_len: LCI data length
   * @civicloc_len: Civic location data length
@@ -86,7 +86,7 @@ index 541dea0fd571..0b0c730dc8d2 100644
   */
  struct cfg80211_beacon_data {
  	const u8 *head, *tail;
-@@ -1042,6 +1073,8 @@ struct cfg80211_beacon_data {
+@@ -1030,6 +1061,8 @@ struct cfg80211_beacon_data {
  	size_t probe_resp_len;
  	size_t lci_len;
  	size_t civicloc_len;
@@ -95,27 +95,19 @@ index 541dea0fd571..0b0c730dc8d2 100644
  };
  
  struct mac_address {
-@@ -1111,6 +1144,7 @@ enum cfg80211_ap_settings_flags {
-  * @he_obss_pd: OBSS Packet Detection settings
-  * @he_bss_color: BSS Color settings
-  * @he_oper: HE operation IE (or %NULL if HE isn't enabled)
-+ * @multiple_bssid: AP settings for multiple bssid
-  */
- struct cfg80211_ap_settings {
- 	struct cfg80211_chan_def chandef;
-@@ -1141,6 +1175,7 @@ struct cfg80211_ap_settings {
- 	u32 flags;
- 	struct ieee80211_he_obss_pd he_obss_pd;
+@@ -1166,6 +1199,7 @@ struct cfg80211_ap_settings {
  	struct cfg80211_he_bss_color he_bss_color;
+ 	struct cfg80211_fils_discovery fils_discovery;
+ 	struct cfg80211_unsol_bcast_probe_resp unsol_bcast_probe_resp;
 +	struct ieee80211_multiple_bssid multiple_bssid;
  };
  
  /**
-diff --git a/include/uapi/linux/nl80211.h b/include/uapi/linux/nl80211.h
-index cade02a0e60e..5bc38d53c78c 100644
---- a/include/uapi/linux/nl80211.h
-+++ b/include/uapi/linux/nl80211.h
-@@ -2551,6 +2551,20 @@ enum nl80211_commands {
+Index: backports-20200628-4.4.60-9a94b73e75/include/uapi/linux/nl80211.h
+===================================================================
+--- backports-20200628-4.4.60-9a94b73e75.orig/include/uapi/linux/nl80211.h
++++ backports-20200628-4.4.60-9a94b73e75/include/uapi/linux/nl80211.h
+@@ -2558,6 +2558,20 @@ enum nl80211_commands {
   * @NL80211_ATTR_COLOR_CHANGE_ANNOUNCEMENT_C_OFF_PRESP: An array of offsets (u16) to the color
   *	switch counters in the probe response (%NL80211_ATTR_PROBE_RESP).
   *
@@ -136,7 +128,7 @@ index cade02a0e60e..5bc38d53c78c 100644
   * @NUM_NL80211_ATTR: total number of nl80211_attrs available
   * @NL80211_ATTR_MAX: highest attribute number currently defined
   * @__NL80211_ATTR_AFTER_LAST: internal use
-@@ -3039,6 +3053,12 @@ enum nl80211_attrs {
+@@ -3052,6 +3066,12 @@ enum nl80211_attrs {
  	NL80211_ATTR_COLOR_CHANGE_ANNOUNCEMENT_COLOR,
  	NL80211_ATTR_COLOR_CHANGE_ANNOUNCEMENT_IES,
  
@@ -149,7 +141,7 @@ index cade02a0e60e..5bc38d53c78c 100644
  	/* add attributes here, update the policy in nl80211.c */
  
  	__NL80211_ATTR_AFTER_LAST,
-@@ -3102,6 +3122,8 @@ enum nl80211_attrs {
+@@ -3115,6 +3135,8 @@ enum nl80211_attrs {
  
  #define NL80211_CQM_TXE_MAX_INTVL		1800
  
@@ -158,11 +150,11 @@ index cade02a0e60e..5bc38d53c78c 100644
  /**
   * enum nl80211_iftype - (virtual) interface types
   *
-diff --git a/net/wireless/nl80211.c b/net/wireless/nl80211.c
-index 2f0bae3c6572..4ba7203ad0d2 100644
---- a/net/wireless/nl80211.c
-+++ b/net/wireless/nl80211.c
-@@ -662,6 +662,11 @@ static const struct nla_policy nl80211_policy[NUM_NL80211_ATTR] = {
+Index: backports-20200628-4.4.60-9a94b73e75/net/wireless/nl80211.c
+===================================================================
+--- backports-20200628-4.4.60-9a94b73e75.orig/net/wireless/nl80211.c
++++ backports-20200628-4.4.60-9a94b73e75/net/wireless/nl80211.c
+@@ -762,6 +762,11 @@ static const struct nla_policy nl80211_p
  	[NL80211_ATTR_COLOR_CHANGE_ANNOUNCEMENT_COUNT] = { .type = NLA_U8 },
  	[NL80211_ATTR_COLOR_CHANGE_ANNOUNCEMENT_COLOR] = { .type = NLA_U8 },
  	[NL80211_ATTR_COLOR_CHANGE_ANNOUNCEMENT_IES] = NLA_POLICY_NESTED(nl80211_policy),
@@ -174,7 +166,7 @@ index 2f0bae3c6572..4ba7203ad0d2 100644
  };
  
  /* policy for the key attributes */
-@@ -3758,6 +3763,14 @@ static int nl80211_new_interface(struct sk_buff *skb, struct genl_info *info)
+@@ -3861,6 +3866,14 @@ static int nl80211_new_interface(struct
  			return err;
  	}
  
@@ -189,7 +181,7 @@ index 2f0bae3c6572..4ba7203ad0d2 100644
  	if (!cfg80211_iftype_allowed(&rdev->wiphy, type, params.use_4addr, 0))
  		return -EOPNOTSUPP;
  
-@@ -4670,6 +4683,21 @@ static int nl80211_parse_beacon(struct cfg80211_registered_device *rdev,
+@@ -4806,6 +4819,21 @@ static int nl80211_parse_beacon(struct c
  		bcn->ftm_responder = -1;
  	}
  
@@ -211,8 +203,8 @@ index 2f0bae3c6572..4ba7203ad0d2 100644
  	return 0;
  }
  
-@@ -5032,6 +5060,18 @@ static int nl80211_start_ap(struct sk_buff *skb, struct genl_info *info)
- 			goto out;
+@@ -5241,6 +5269,18 @@ static int nl80211_start_ap(struct sk_bu
+ 			return err;
  	}
  
 +	if (info->attrs[NL80211_ATTR_MULTIPLE_BSSID_INDEX])
@@ -230,6 +222,3 @@ index 2f0bae3c6572..4ba7203ad0d2 100644
  	nl80211_calculate_ap_params(&params);
  
  	if (info->attrs[NL80211_ATTR_EXTERNAL_AUTH_SUPPORT])
--- 
-2.25.1
-

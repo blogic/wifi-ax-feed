@@ -1,4 +1,4 @@
-From d08a03b48526206eabd6902e17e34133e1ed35d5 Mon Sep 17 00:00:00 2001
+From 298524fa8c5d10cd5f78eee1de02bd591637d535 Mon Sep 17 00:00:00 2001
 From: John Crispin <john@phrozen.org>
 Date: Wed, 12 Aug 2020 14:30:55 +0200
 Subject: [PATCH 14/14] ath11k: set the multiple bssid hw flags and
@@ -12,11 +12,11 @@ Signed-off-by: John Crispin <john@phrozen.org>
  drivers/net/wireless/ath/ath11k/mac.c | 6 ++++++
  1 file changed, 6 insertions(+)
 
-diff --git a/drivers/net/wireless/ath/ath11k/mac.c b/drivers/net/wireless/ath/ath11k/mac.c
-index d51a0ff25222..606d2b40a6c6 100644
---- a/drivers/net/wireless/ath/ath11k/mac.c
-+++ b/drivers/net/wireless/ath/ath11k/mac.c
-@@ -5994,19 +5994,23 @@ static int ath11k_mac_setup_channels_rates(struct ath11k *ar,
+Index: backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/mac.c
+===================================================================
+--- backports-20200628-4.4.60-9a94b73e75.orig/drivers/net/wireless/ath/ath11k/mac.c
++++ backports-20200628-4.4.60-9a94b73e75/drivers/net/wireless/ath/ath11k/mac.c
+@@ -7530,19 +7530,23 @@ static void ath11k_mac_fetch_coex_info(s
  
  static const u8 ath11k_if_types_ext_capa[] = {
  	[0] = WLAN_EXT_CAPA1_EXT_CHANNEL_SWITCHING,
@@ -40,15 +40,12 @@ index d51a0ff25222..606d2b40a6c6 100644
  };
  
  static const struct wiphy_iftype_ext_capab ath11k_iftypes_ext_capa[] = {
-@@ -6116,6 +6120,8 @@ static int __ath11k_mac_register(struct ath11k *ar)
+@@ -7658,6 +7662,8 @@ static int __ath11k_mac_register(struct
  	ieee80211_hw_set(ar->hw, QUEUE_CONTROL);
  	ieee80211_hw_set(ar->hw, SUPPORTS_TX_FRAG);
  	ieee80211_hw_set(ar->hw, REPORTS_LOW_ACK);
 +	ieee80211_hw_set(ar->hw, SUPPORTS_MULTI_BSSID);
 +	ieee80211_hw_set(ar->hw, SUPPORTS_MULTI_BSSID_AP);
- 	if (ht_cap & WMI_HT_CAP_ENABLED) {
+ 
+ 	if (ht_cap & WMI_HT_CAP_ENABLED || ar->supports_6ghz) {
  		ieee80211_hw_set(ar->hw, AMPDU_AGGREGATION);
- 		ieee80211_hw_set(ar->hw, TX_AMPDU_SETUP_IN_HW);
--- 
-2.25.1
-

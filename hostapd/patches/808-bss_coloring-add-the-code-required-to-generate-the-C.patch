@@ -1,7 +1,7 @@
-From cfb0cc07c9fdbb06f70088564c9430282179b8d7 Mon Sep 17 00:00:00 2001
+From 3b068a96bd808c4590faf4cb089f986639ff63a4 Mon Sep 17 00:00:00 2001
 From: John Crispin <john@phrozen.org>
 Date: Wed, 17 Jun 2020 14:37:31 +0200
-Subject: [PATCH 809/813] bss_coloring: add the code required to generate the
+Subject: [PATCH 808/820] bss_coloring: add the code required to generate the
  CCA IE
 
 This IE is similar to the CSA one. It contains a counter and the target
@@ -16,10 +16,10 @@ Signed-off-by: John Crispin <john@phrozen.org>
  4 files changed, 28 insertions(+)
 
 diff --git a/src/ap/beacon.c b/src/ap/beacon.c
-index fde637017..8c3e80dfb 100644
+index c59842edc..b59e34623 100644
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -576,11 +576,17 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
+@@ -580,11 +580,17 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
  
  #ifdef CONFIG_IEEE80211AX
  	if (hapd->iconf->ieee80211ax) {
@@ -37,7 +37,7 @@ index fde637017..8c3e80dfb 100644
  	}
  #endif /* CONFIG_IEEE80211AX */
  
-@@ -1304,12 +1310,18 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
+@@ -1308,12 +1314,18 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
  
  #ifdef CONFIG_IEEE80211AX
  	if (hapd->iconf->ieee80211ax) {
@@ -57,7 +57,7 @@ index fde637017..8c3e80dfb 100644
  #endif /* CONFIG_IEEE80211AX */
  
 diff --git a/src/ap/ieee802_11.h b/src/ap/ieee802_11.h
-index 466938f59..2c3dea0e9 100644
+index 11fd1245c..17b4cfe39 100644
 --- a/src/ap/ieee802_11.h
 +++ b/src/ap/ieee802_11.h
 @@ -100,6 +100,7 @@ u16 copy_sta_he_6ghz_capab(struct hostapd_data *hapd, struct sta_info *sta,
@@ -69,7 +69,7 @@ index 466938f59..2c3dea0e9 100644
  		       const u8 *buf, size_t len, int ack);
  void hostapd_eapol_tx_status(struct hostapd_data *hapd, const u8 *dst,
 diff --git a/src/ap/ieee802_11_he.c b/src/ap/ieee802_11_he.c
-index 4e060a8fd..d4b278786 100644
+index 85b714090..049ac7f0e 100644
 --- a/src/ap/ieee802_11_he.c
 +++ b/src/ap/ieee802_11_he.c
 @@ -483,3 +483,17 @@ int hostapd_get_he_twt_responder(struct hostapd_data *hapd,
@@ -91,7 +91,7 @@ index 4e060a8fd..d4b278786 100644
 +	return eid;
 +}
 diff --git a/src/common/ieee802_11_defs.h b/src/common/ieee802_11_defs.h
-index f1fdc8796..e8956eca1 100644
+index 5b834c5c8..16f517ac6 100644
 --- a/src/common/ieee802_11_defs.h
 +++ b/src/common/ieee802_11_defs.h
 @@ -475,6 +475,7 @@

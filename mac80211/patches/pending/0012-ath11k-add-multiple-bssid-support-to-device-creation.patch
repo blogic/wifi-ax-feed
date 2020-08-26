@@ -1,4 +1,4 @@
-From 9b5db93ef7104ad923eff3835edded98d821365d Mon Sep 17 00:00:00 2001
+From 25927b847d668953e35b6911cda7c427ba64aac5 Mon Sep 17 00:00:00 2001
 From: John Crispin <john@phrozen.org>
 Date: Wed, 12 Aug 2020 15:21:40 +0200
 Subject: [PATCH 12/14] ath11k: add multiple bssid support to device creation
@@ -12,7 +12,7 @@ Signed-off-by: John Crispin <john@phrozen.org>
  1 file changed, 20 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/net/wireless/ath/ath11k/mac.c b/drivers/net/wireless/ath/ath11k/mac.c
-index 2e4f1966da21..08e7f4ac8a26 100644
+index 34e06112c7ae..4f2bb30524fd 100644
 --- a/drivers/net/wireless/ath/ath11k/mac.c
 +++ b/drivers/net/wireless/ath/ath11k/mac.c
 @@ -4269,17 +4269,30 @@ static void ath11k_mac_op_stop(struct ieee80211_hw *hw)

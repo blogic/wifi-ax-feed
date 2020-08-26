@@ -1,4 +1,4 @@
-From 62eead9a852085e5ac8808a94952ae29e2d6e237 Mon Sep 17 00:00:00 2001
+From 389d78d5adb1c968a430ef71628db7175e72c7ab Mon Sep 17 00:00:00 2001
 From: John Crispin <john@phrozen.org>
 Date: Wed, 12 Aug 2020 14:58:08 +0200
 Subject: [PATCH 09/14] mac80211: add multiple bssid/ema support to bcn
@@ -17,7 +17,7 @@ Signed-off-by: John Crispin <john@phrozen.org>
  3 files changed, 73 insertions(+), 4 deletions(-)
 
 diff --git a/include/net/mac80211.h b/include/net/mac80211.h
-index a2145092697f..5b2fa0b3b34c 100644
+index c8c9bf4e07ae..a1a0af8a5868 100644
 --- a/include/net/mac80211.h
 +++ b/include/net/mac80211.h
 @@ -4792,12 +4792,17 @@ void ieee80211_report_low_ack(struct ieee80211_sta *sta, u32 num_packets);
@@ -68,7 +68,7 @@ index a2145092697f..5b2fa0b3b34c 100644
   * ieee80211_beacon_get_tim - beacon generation function
   * @hw: pointer obtained from ieee80211_alloc_hw().
 diff --git a/net/mac80211/ieee80211_i.h b/net/mac80211/ieee80211_i.h
-index 016bed63e74e..33f1cf33fb54 100644
+index 685ae1464355..d407c0338605 100644
 --- a/net/mac80211/ieee80211_i.h
 +++ b/net/mac80211/ieee80211_i.h
 @@ -269,6 +269,7 @@ struct beacon_data {

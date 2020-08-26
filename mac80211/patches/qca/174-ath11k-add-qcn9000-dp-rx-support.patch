@@ -1217,7 +1217,7 @@ Signed-off-by: Anilkumar Kolli <akolli@codeaurora.org>
   */
 --- a/drivers/net/wireless/ath/ath11k/hw.c
 +++ b/drivers/net/wireless/ath/ath11k/hw.c
-@@ -167,6 +167,178 @@ static void ath11k_tx_mesh_enable_qca807
+@@ -167,6 +167,192 @@ static void ath11k_tx_mesh_enable_qca807
  				     true);
  }
  
@@ -1393,10 +1393,24 @@ Signed-off-by: Anilkumar Kolli <akolli@codeaurora.org>
 +	return &desc->u.ipq8074.attention;
 +}
 +
++static
++u16 ath11k_rx_desc_get_hal_mpdu_peerid_qca8074(struct hal_rx_mpdu_info *mpdu_info)
++{
++        return FIELD_GET(HAL_RX_MPDU_INFO_INFO0_PEERID,
++                         __le32_to_cpu(mpdu_info->u.ipq8074.info0));
++}
++
++static
++u32 ath11k_rx_desc_get_hal_mpdu_len_qca8074(struct hal_rx_mpdu_info *mpdu_info)
++{
++        return FIELD_GET(HAL_RX_MPDU_INFO_INFO1_MPDU_LEN,
++                         __le32_to_cpu(mpdu_info->u.ipq8074.info1));
++}
++
  static u8 ath11k_qca6018_hw_mac_from_pdev_id(struct ath11k_base *ab,
  						    int pdev_idx)
  {
-@@ -180,18 +352,274 @@ static void ath11k_tx_mesh_enable_qcn900
+@@ -180,18 +366,294 @@ static void ath11k_tx_mesh_enable_qcn900
  				     true);
  }
  
@@ -1572,6 +1586,20 @@ Signed-off-by: Anilkumar Kolli <akolli@codeaurora.org>
 +	return &desc->u.qcn9000.attention;
 +}
 +
++static
++u16 ath11k_rx_desc_get_hal_mpdu_peerid_qcn9000(struct hal_rx_mpdu_info *mpdu_info)
++{
++        return FIELD_GET(HAL_RX_MPDU_INFO_INFO0_PEERID,
++                         __le32_to_cpu(mpdu_info->u.qcn9000.info0));
++}
++
++static
++u32 ath11k_rx_desc_get_hal_mpdu_len_qcn9000(struct hal_rx_mpdu_info *mpdu_info)
++{
++        return FIELD_GET(HAL_RX_MPDU_INFO_INFO1_MPDU_LEN,
++                         __le32_to_cpu(mpdu_info->u.qcn9000.info1));
++}
++
  const struct ath11k_hw_ops ath11k_qca8074_ops = {
  	.get_hw_mac_from_pdev_id = ath11k_qca8074_hw_mac_from_pdev_id,
  	.tx_mesh_enable = ath11k_tx_mesh_enable_qca8074,
@@ -1603,6 +1631,8 @@ Signed-off-by: Anilkumar Kolli <akolli@codeaurora.org>
 +	.rx_desc_msdu_da_mcbc = ath11k_rx_desc_msdu_da_mcbc_qca8074,
 +	.rx_desc_set_msdu_len = ath11k_rx_desc_set_msdu_len_qca8074,
 +	.rx_desc_get_attention = ath11k_rx_desc_get_attention_qca8074,
++	.rx_desc_get_hal_mpdu_peerid = ath11k_rx_desc_get_hal_mpdu_peerid_qca8074,
++	.rx_desc_get_hal_mpdu_len = ath11k_rx_desc_get_hal_mpdu_len_qca8074,
  };
  
  const struct ath11k_hw_ops ath11k_qca6018_ops = {
@@ -1636,6 +1666,8 @@ Signed-off-by: Anilkumar Kolli <akolli@codeaurora.org>
 +	.rx_desc_msdu_da_mcbc = ath11k_rx_desc_msdu_da_mcbc_qca8074,
 +	.rx_desc_set_msdu_len = ath11k_rx_desc_set_msdu_len_qca8074,
 +	.rx_desc_get_attention = ath11k_rx_desc_get_attention_qca8074,
++	.rx_desc_get_hal_mpdu_peerid = ath11k_rx_desc_get_hal_mpdu_peerid_qca8074,
++        .rx_desc_get_hal_mpdu_len = ath11k_rx_desc_get_hal_mpdu_len_qca8074,
  };
  
  const struct ath11k_hw_ops ath11k_qcn9000_ops = {
@@ -1669,11 +1701,20 @@ Signed-off-by: Anilkumar Kolli <akolli@codeaurora.org>
 +	.rx_desc_msdu_da_mcbc = ath11k_rx_desc_msdu_da_mcbc_qcn9000,
 +	.rx_desc_set_msdu_len = ath11k_rx_desc_set_msdu_len_qcn9000,
 +	.rx_desc_get_attention = ath11k_rx_desc_get_attention_qcn9000,
++	.rx_desc_get_hal_mpdu_peerid = ath11k_rx_desc_get_hal_mpdu_peerid_qcn9000,
++	.rx_desc_get_hal_mpdu_len = ath11k_rx_desc_get_hal_mpdu_len_qcn9000,
  };
  
 --- a/drivers/net/wireless/ath/ath11k/hw.h
 +++ b/drivers/net/wireless/ath/ath11k/hw.h
-@@ -123,6 +123,35 @@ struct ath11k_hw_ops {
+@@ -117,12 +117,44 @@ enum ath11k_bus {
+ struct ath11k_base;
+ struct hal_rx_desc;
+ struct hal_tcl_data_cmd;
++struct hal_rx_mpdu_info;
+ 
+ struct ath11k_hw_ops {
+ 	u8 (*get_hw_mac_from_pdev_id)(struct ath11k_base *ab, int pdev_id);
  
  	void (*tx_mesh_enable)(struct ath11k_base *ab,
  			       struct hal_tcl_data_cmd *tcl_cmd);
@@ -1706,10 +1747,12 @@ Signed-off-by: Anilkumar Kolli <akolli@codeaurora.org>
 +	bool (*rx_desc_msdu_da_mcbc)(struct hal_rx_desc *desc);
 +	void (*rx_desc_set_msdu_len)(struct hal_rx_desc *desc, u16 len);
 +	struct rx_attention *(*rx_desc_get_attention)(struct hal_rx_desc *desc);
++	u16 (*rx_desc_get_hal_mpdu_peerid)(struct hal_rx_mpdu_info *mpdu_info);
++	u32 (*rx_desc_get_hal_mpdu_len)(struct hal_rx_mpdu_info *mpdu_info);
  };
  
  struct ath11k_hw_params {
-@@ -140,7 +169,7 @@ struct ath11k_hw_params {
+@@ -140,7 +172,7 @@ struct ath11k_hw_params {
  	} fw;
  	u8 spectral_fft_sz;
  	bool credit_flow;
@@ -2020,7 +2063,7 @@ Signed-off-by: Anilkumar Kolli <akolli@codeaurora.org>
  		.hw_ops = &ath11k_qcn9000_ops,
  		.credit_flow = false,
  	},
-@@ -835,11 +838,44 @@ static void ath11k_core_restart(struct w
+@@ -835,11 +838,45 @@ static void ath11k_core_restart(struct w
  	}
  	complete(&ab->driver_recovery);
  }
@@ -2050,7 +2093,8 @@ Signed-off-by: Anilkumar Kolli <akolli@codeaurora.org>
 +		    !hw_ops->rx_desc_copy_attn_end_tlv || !hw_ops->rx_desc_get_mpdu_start_tag ||
 +		    !hw_ops->rx_desc_get_mpdu_ppdu_id || !hw_ops->rx_desc_get_mpdu_addr2_valid ||
 +		    !hw_ops->rx_desc_get_mpdu_addr2 || !hw_ops->rx_desc_msdu_da_mcbc ||
-+		    !hw_ops->rx_desc_set_msdu_len || !hw_ops->rx_desc_get_attention)) {
++		    !hw_ops->rx_desc_set_msdu_len || !hw_ops->rx_desc_get_attention ||
++		    !hw_ops->rx_desc_get_hal_mpdu_peerid || !hw_ops->rx_desc_get_hal_mpdu_len)) {
 +		ath11k_err(ab, "Unsupported hw ops in hw version: 0x%x\n", ab->hw_rev);
 +		return -EINVAL;
 +	}
@@ -2066,7 +2110,7 @@ Signed-off-by: Anilkumar Kolli <akolli@codeaurora.org>
  
  	for (i = 0; i < ARRAY_SIZE(ath11k_hw_params_list); i++) {
  		hw_params = &ath11k_hw_params_list[i];
-@@ -853,6 +889,12 @@ static int ath11k_init_hw_params(struct
+@@ -853,6 +890,12 @@ static int ath11k_init_hw_params(struct
  		return -EINVAL;
  	}
  
@@ -2090,3 +2134,76 @@ Signed-off-by: Anilkumar Kolli <akolli@codeaurora.org>
  		ab->hw_params.hw_ops->tx_mesh_enable(ab, tcl_cmd);
  }
  
+--- a/drivers/net/wireless/ath/ath11k/hal_rx.c
++++ b/drivers/net/wireless/ath/ath11k/hal_rx.c
+@@ -901,6 +901,20 @@ ath11k_hal_rx_populate_mu_user_info(void
+ 	ath11k_hal_rx_populate_byte_count(rx_tlv, ppdu_info, rx_user_status);
+ }
+ 
++static
++u16 ath11k_hal_rxdesc_get_hal_mpdu_peerid(struct ath11k_base *ab,
++				          struct hal_rx_mpdu_info *mpdu_info)
++{
++	return ab->hw_params.hw_ops->rx_desc_get_hal_mpdu_peerid(mpdu_info);
++}
++
++static
++u32 ath11k_hal_rxdesc_get_hal_mpdu_len(struct ath11k_base *ab,
++				       struct hal_rx_mpdu_info *mpdu_info)
++{
++	return ab->hw_params.hw_ops->rx_desc_get_hal_mpdu_len(mpdu_info);
++}
++
+ static enum hal_rx_mon_status
+ ath11k_hal_rx_parse_mon_status_tlv(struct ath11k_base *ab,
+ 				   struct hal_rx_mon_ppdu_info *ppdu_info,
+@@ -1546,13 +1560,11 @@ ath11k_hal_rx_parse_mon_status_tlv(struc
+ 			(struct hal_rx_mpdu_info *)tlv_data;
+ 		u16 peer_id;
+ 
+-		peer_id = FIELD_GET(HAL_RX_MPDU_INFO_INFO0_PEERID,
+-				    __le32_to_cpu(mpdu_info->info0));
++		peer_id = ath11k_hal_rxdesc_get_hal_mpdu_peerid(ab,mpdu_info);
+ 		if (peer_id)
+ 			ppdu_info->peer_id = peer_id;
+ 
+-		ppdu_info->mpdu_len += FIELD_GET(HAL_RX_MPDU_INFO_INFO1_MPDU_LEN,
+-						 __le32_to_cpu(mpdu_info->info1));
++		ppdu_info->mpdu_len += ath11k_hal_rxdesc_get_hal_mpdu_len(ab,mpdu_info);
+ 		break;
+ 	}
+ 	case HAL_RXPCU_PPDU_END_INFO: {
+--- a/drivers/net/wireless/ath/ath11k/hal_rx.h
++++ b/drivers/net/wireless/ath/ath11k/hal_rx.h
+@@ -431,7 +431,8 @@ struct hal_rx_phyrx_rssi_legacy_info {
+ 
+ #define HAL_RX_MPDU_INFO_INFO0_PEERID	GENMASK(31, 16)
+ #define HAL_RX_MPDU_INFO_INFO1_MPDU_LEN        GENMASK(13, 0)
+-struct hal_rx_mpdu_info {
++
++struct hal_rx_mpdu_info_ipq8074 {
+ 	__le32 rsvd0;
+ 	__le32 info0;
+ 	__le32 rsvd1[11];
+@@ -439,6 +440,21 @@ struct hal_rx_mpdu_info {
+ 	__le32 rsvd2[9];
+ } __packed;
+ 
++struct hal_rx_mpdu_info_ipq9000 {
++        __le32 rsvd0[10];
++        __le32 info0;
++        __le32 rsvd1[2];
++        __le32 info1;
++        __le32 rsvd2[9];
++} __packed;
++
++struct hal_rx_mpdu_info {
++	union {
++		struct hal_rx_mpdu_info_ipq8074 ipq8074;
++		struct hal_rx_mpdu_info_ipq9000 qcn9000;
++	} u;
++} __packed;
++
+ #define HAL_RX_PPDU_END_DURATION	GENMASK(23, 0)
+ struct hal_rx_ppdu_end_duration {
+ 	__le32 rsvd0[9];

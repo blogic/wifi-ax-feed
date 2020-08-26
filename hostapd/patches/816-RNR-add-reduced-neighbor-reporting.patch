@@ -1,7 +1,7 @@
-From 4bc618fcdaea30fce6cffc1fbfa48de345ed67af Mon Sep 17 00:00:00 2001
+From bdbb588a5874065ebd07440446636b26360b4b78 Mon Sep 17 00:00:00 2001
 From: John Crispin <john@phrozen.org>
 Date: Thu, 18 Jun 2020 13:12:41 +0200
-Subject: [PATCH 817/817] RNR: add reduced neighbor reporting
+Subject: [PATCH 816/820] RNR: add reduced neighbor reporting
 
 The Reduced Neighbor Report (RNR) element contains channel and other
 information related to neighbor APs. It is part of the OCE requirement.
@@ -17,24 +17,24 @@ Signed-off-by: John Crispin <john@phrozen.org>
  src/common/ieee802_11_defs.h | 13 ++++++
  7 files changed, 112 insertions(+)
 
-Index: hostapd-2020-06-08-5a8b3662/hostapd/config_file.c
+Index: hostapd-2020-07-02-58b384f4/hostapd/config_file.c
 ===================================================================
---- hostapd-2020-06-08-5a8b3662.orig/hostapd/config_file.c
-+++ hostapd-2020-06-08-5a8b3662/hostapd/config_file.c
-@@ -4679,6 +4679,8 @@ static int hostapd_config_fill(struct ho
- 		}
- 		bss->mka_psk_set |= MKA_PSK_SET_CKN;
+--- hostapd-2020-07-02-58b384f4.orig/hostapd/config_file.c
++++ hostapd-2020-07-02-58b384f4/hostapd/config_file.c
+@@ -4583,6 +4583,8 @@ static int hostapd_config_fill(struct ho
  #endif /* CONFIG_MACSEC */
+ 	} else if (os_strcmp(buf, "multiple_bssid") == 0) {
+ 		conf->multiple_bssid = atoi(pos);
 +	} else if (os_strcmp(buf, "rnr_beacon") == 0) {
 +		bss->rnr_beacon = atoi(pos);
  	} else {
  		wpa_printf(MSG_ERROR,
  			   "Line %d: unknown configuration item '%s'",
-Index: hostapd-2020-06-08-5a8b3662/hostapd/hostapd.conf
+Index: hostapd-2020-07-02-58b384f4/hostapd/hostapd.conf
 ===================================================================
---- hostapd-2020-06-08-5a8b3662.orig/hostapd/hostapd.conf
-+++ hostapd-2020-06-08-5a8b3662/hostapd/hostapd.conf
-@@ -2770,6 +2770,9 @@ own_ip_addr=127.0.0.1
+--- hostapd-2020-07-02-58b384f4.orig/hostapd/hostapd.conf
++++ hostapd-2020-07-02-58b384f4/hostapd/hostapd.conf
+@@ -2772,6 +2772,9 @@ own_ip_addr=127.0.0.1
  # that allows sending of such data. Default: 0.
  #stationary_ap=0
  
@@ -44,23 +44,23 @@ Index: hostapd-2020-06-08-5a8b3662/hostapd/hostapd.conf
  ##### Airtime policy configuration ###########################################
  
  # Set the airtime policy operating mode:
-Index: hostapd-2020-06-08-5a8b3662/src/ap/ap_config.h
+Index: hostapd-2020-07-02-58b384f4/src/ap/ap_config.h
 ===================================================================
---- hostapd-2020-06-08-5a8b3662.orig/src/ap/ap_config.h
-+++ hostapd-2020-06-08-5a8b3662/src/ap/ap_config.h
-@@ -902,6 +902,7 @@ struct hostapd_bss_config {
- 	struct ieee80211_he_mu_edca_parameter_set he_mu_edca;
- 	struct spatial_reuse spr;
- #endif
+--- hostapd-2020-07-02-58b384f4.orig/src/ap/ap_config.h
++++ hostapd-2020-07-02-58b384f4/src/ap/ap_config.h
+@@ -862,6 +862,7 @@ struct hostapd_bss_config {
+ 	 */
+ 	u8 mka_psk_set;
+ #endif /* CONFIG_MACSEC */
 +	u8 rnr_beacon;
+ 	char *config_id;
  };
  
- /**
-Index: hostapd-2020-06-08-5a8b3662/src/ap/beacon.c
+Index: hostapd-2020-07-02-58b384f4/src/ap/beacon.c
 ===================================================================
---- hostapd-2020-06-08-5a8b3662.orig/src/ap/beacon.c
-+++ hostapd-2020-06-08-5a8b3662/src/ap/beacon.c
-@@ -1192,6 +1192,7 @@ int ieee802_11_build_ap_params(struct ho
+--- hostapd-2020-07-02-58b384f4.orig/src/ap/beacon.c
++++ hostapd-2020-07-02-58b384f4/src/ap/beacon.c
+@@ -1207,6 +1207,7 @@ int ieee802_11_build_ap_params(struct ho
  	tail_len += hostapd_mbo_ie_len(hapd);
  	tail_len += hostapd_eid_owe_trans_len(hapd);
  	tail_len += hostapd_eid_dpp_cc_len(hapd);
@@ -68,7 +68,7 @@ Index: hostapd-2020-06-08-5a8b3662/src/ap/beacon.c
  
  	tailpos = tail = os_malloc(tail_len);
  	if (head == NULL || tail == NULL) {
-@@ -1364,6 +1365,7 @@ int ieee802_11_build_ap_params(struct ho
+@@ -1382,6 +1383,7 @@ int ieee802_11_build_ap_params(struct ho
  	tailpos = hostapd_eid_owe_trans(hapd, tailpos,
  					tail + tail_len - tailpos);
  	tailpos = hostapd_eid_dpp_cc(hapd, tailpos, tail + tail_len - tailpos);
@@ -76,13 +76,13 @@ Index: hostapd-2020-06-08-5a8b3662/src/ap/beacon.c
  
  	if (hapd->conf->vendor_elements) {
  		os_memcpy(tailpos, wpabuf_head(hapd->conf->vendor_elements),
-Index: hostapd-2020-06-08-5a8b3662/src/ap/ieee802_11.c
+Index: hostapd-2020-07-02-58b384f4/src/ap/ieee802_11.c
 ===================================================================
---- hostapd-2020-06-08-5a8b3662.orig/src/ap/ieee802_11.c
-+++ hostapd-2020-06-08-5a8b3662/src/ap/ieee802_11.c
-@@ -5612,4 +5612,93 @@ void ieee802_11_rx_from_unknown(struct h
+--- hostapd-2020-07-02-58b384f4.orig/src/ap/ieee802_11.c
++++ hostapd-2020-07-02-58b384f4/src/ap/ieee802_11.c
+@@ -5763,4 +5763,93 @@ u8 * hostapd_eid_multiple_bssid(struct h
+ 	return eid;
  }
- 
  
 +
 +size_t hostapd_eid_reduced_neighbor_report_len(struct hostapd_data *hapd)
@@ -174,26 +174,26 @@ Index: hostapd-2020-06-08-5a8b3662/src/ap/ieee802_11.c
 +}
 +
  #endif /* CONFIG_NATIVE_WINDOWS */
-Index: hostapd-2020-06-08-5a8b3662/src/ap/ieee802_11.h
+Index: hostapd-2020-07-02-58b384f4/src/ap/ieee802_11.h
 ===================================================================
---- hostapd-2020-06-08-5a8b3662.orig/src/ap/ieee802_11.h
-+++ hostapd-2020-06-08-5a8b3662/src/ap/ieee802_11.h
-@@ -120,6 +120,8 @@ u8 * hostapd_eid_time_zone(struct hostap
- int hostapd_update_time_adv(struct hostapd_data *hapd);
- void hostapd_client_poll_ok(struct hostapd_data *hapd, const u8 *addr);
- u8 * hostapd_eid_bss_max_idle_period(struct hostapd_data *hapd, u8 *eid);
+--- hostapd-2020-07-02-58b384f4.orig/src/ap/ieee802_11.h
++++ hostapd-2020-07-02-58b384f4/src/ap/ieee802_11.h
+@@ -124,6 +124,8 @@ u8 * hostapd_eid_multiple_bssid(struct h
+ 				u8 is_beacon, u8 **eid_offsets, int *eid_count,
+ 				int eid_max);
+ int hostapd_eid_multiple_bssid_len(struct hostapd_data *hapd);
 +u8 * hostapd_eid_reduced_neighbor_report(struct hostapd_data *hapd, u8 *eid);
 +size_t hostapd_eid_reduced_neighbor_report_len(struct hostapd_data *hapd);
  
  int auth_sae_init_committed(struct hostapd_data *hapd, struct sta_info *sta);
  #ifdef CONFIG_SAE
-Index: hostapd-2020-06-08-5a8b3662/src/common/ieee802_11_defs.h
+Index: hostapd-2020-07-02-58b384f4/src/common/ieee802_11_defs.h
 ===================================================================
---- hostapd-2020-06-08-5a8b3662.orig/src/common/ieee802_11_defs.h
-+++ hostapd-2020-06-08-5a8b3662/src/common/ieee802_11_defs.h
-@@ -2333,4 +2333,17 @@ enum edmg_bw_config {
- /* DPP Public Action frame identifiers - OUI_WFA */
- #define DPP_OUI_TYPE 0x1A
+--- hostapd-2020-07-02-58b384f4.orig/src/common/ieee802_11_defs.h
++++ hostapd-2020-07-02-58b384f4/src/common/ieee802_11_defs.h
+@@ -2349,4 +2349,17 @@ enum edmg_bw_config {
+  */
+ #define DOT11BSS_COLOR_COLLISION_AP_PERIOD	50
  
 +/* TBTT Information field defines */
 +#define TBTT_HEADER_LENGTH			4
