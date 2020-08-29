@@ -1,0 +1,43 @@
+From 90bdf456180c97a47cab418b5d2a37cf97f2fbaf Mon Sep 17 00:00:00 2001
+From: John Crispin <john@phrozen.org>
+Date: Wed, 26 Aug 2020 14:38:16 +0200
+Subject: [PATCH 41/42] mac80211: set beacon_tx_mode
+
+Signed-off-by: John Crispin <john@phrozen.org>
+---
+ include/net/mac80211.h | 2 ++
+ net/mac80211/cfg.c     | 1 +
+ 2 files changed, 3 insertions(+)
+
+Index: backports-20200628-4.4.60-9a94b73e75/include/net/mac80211.h
+===================================================================
+--- backports-20200628-4.4.60-9a94b73e75.orig/include/net/mac80211.h
++++ backports-20200628-4.4.60-9a94b73e75/include/net/mac80211.h
+@@ -642,6 +642,7 @@ struct ieee80211_fils_discovery {
+  * @fils_discovery: FILS discovery configuration
+  * @unsol_bcast_probe_resp_interval: Unsolicited broadcast probe response
+  *	interval.
++ * @beacon_tx_mode: the beacon tx mode. This can be staggered or burst.
+  */
+ struct ieee80211_bss_conf {
+ 	const u8 *bssid;
+@@ -714,6 +715,7 @@ struct ieee80211_bss_conf {
+ 	struct ieee80211_fils_discovery fils_discovery;
+ 	u32 unsol_bcast_probe_resp_interval;
+ 	struct ieee80211_multiple_bssid multiple_bssid;
++	enum nl80211_beacon_tx_mode beacon_tx_mode;
+ };
+ 
+ /**
+Index: backports-20200628-4.4.60-9a94b73e75/net/mac80211/cfg.c
+===================================================================
+--- backports-20200628-4.4.60-9a94b73e75.orig/net/mac80211/cfg.c
++++ backports-20200628-4.4.60-9a94b73e75/net/mac80211/cfg.c
+@@ -1172,6 +1172,7 @@ static int ieee80211_start_ap(struct wip
+ 
+ 	prev_beacon_int = sdata->vif.bss_conf.beacon_int;
+ 	sdata->vif.bss_conf.beacon_int = params->beacon_interval;
++	sdata->vif.bss_conf.beacon_tx_mode = params->beacon_tx_mode;
+ 
+ 	if (params->he_cap && params->he_oper) {
+ 		sdata->vif.bss_conf.he_support = true;

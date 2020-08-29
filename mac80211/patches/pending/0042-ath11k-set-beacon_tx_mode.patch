@@ -1,0 +1,26 @@
+From e710af3db90a3dfa4100dc37df3ccba235c47ea1 Mon Sep 17 00:00:00 2001
+From: John Crispin <john@phrozen.org>
+Date: Wed, 26 Aug 2020 14:10:56 +0200
+Subject: [PATCH 42/42] ath11k: set beacon_tx_mode
+
+Signed-off-by: John Crispin <john@phrozen.org>
+---
+ drivers/net/wireless/ath/ath11k/mac.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/net/wireless/ath/ath11k/mac.c b/drivers/net/wireless/ath/ath11k/mac.c
+index c50e653df535..f7a278b82b6c 100644
+--- a/drivers/net/wireless/ath/ath11k/mac.c
++++ b/drivers/net/wireless/ath/ath11k/mac.c
+@@ -1918,6 +1918,8 @@ static void ath11k_mac_op_bss_info_changed(struct ieee80211_hw *hw,
+ 	if (changed & BSS_CHANGED_BEACON) {
+ 		param_id = WMI_PDEV_PARAM_BEACON_TX_MODE;
+ 		param_value = WMI_BEACON_STAGGERED_MODE;
++		if (vif->bss_conf.beacon_tx_mode == NL80211_BEACON_TX_MODE_BURST)
++			param_value = WMI_BEACON_BURST_MODE;
+ 		ret = ath11k_wmi_pdev_set_param(ar, param_id,
+ 						param_value, ar->pdev->pdev_id);
+ 		if (ret)
+-- 
+2.25.1
+

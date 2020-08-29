@@ -1,0 +1,103 @@
+From 9d7b7d2bcd29af29083c5d8c6f2d39e8ddb6ec65 Mon Sep 17 00:00:00 2001
+From: John Crispin <john@phrozen.org>
+Date: Wed, 26 Aug 2020 14:08:00 +0200
+Subject: [PATCH 40/42] nl80211: set beacon_tx_mode
+
+Signed-off-by: John Crispin <john@phrozen.org>
+---
+ include/net/cfg80211.h       |  3 +++
+ include/uapi/linux/nl80211.h | 17 +++++++++++++++++
+ net/wireless/nl80211.c       |  7 +++++++
+ 3 files changed, 27 insertions(+)
+
+diff --git a/include/net/cfg80211.h b/include/net/cfg80211.h
+index 84430776304e..b9968e5e5621 100644
+--- a/include/net/cfg80211.h
++++ b/include/net/cfg80211.h
+@@ -1145,6 +1145,8 @@ enum cfg80211_ap_settings_flags {
+  * @he_bss_color: BSS Color settings
+  * @he_oper: HE operation IE (or %NULL if HE isn't enabled)
+  * @multiple_bssid: AP settings for multiple bssid
++ * @beacon_tx_mode: can be set to tell the driver to sent the beacons in staggered
++ *	or burst mode.
+  */
+ struct cfg80211_ap_settings {
+ 	struct cfg80211_chan_def chandef;
+@@ -1176,6 +1178,7 @@ struct cfg80211_ap_settings {
+ 	struct ieee80211_he_obss_pd he_obss_pd;
+ 	struct cfg80211_he_bss_color he_bss_color;
+ 	struct ieee80211_multiple_bssid multiple_bssid;
++	enum nl80211_beacon_tx_mode beacon_tx_mode;
+ };
+ 
+ /**
+diff --git a/include/uapi/linux/nl80211.h b/include/uapi/linux/nl80211.h
+index 84ce82984c08..d2927eae34e7 100644
+--- a/include/uapi/linux/nl80211.h
++++ b/include/uapi/linux/nl80211.h
+@@ -2565,6 +2565,8 @@ enum nl80211_commands {
+  * @NL80211_ATTR_MULTIPLE_BSSID_IES: The Elements that describe our multiple BSS group.
+  *	these get passed separately as the kernel might need to split them up for EMA VAP.
+  *
++ * @NL80211_ATTR_BEACON_TX_MODE: Set the beacon tx mode to staggered or burst.
++ *
+  * @NUM_NL80211_ATTR: total number of nl80211_attrs available
+  * @NL80211_ATTR_MAX: highest attribute number currently defined
+  * @__NL80211_ATTR_AFTER_LAST: internal use
+@@ -3059,6 +3061,8 @@ enum nl80211_attrs {
+ 	NL80211_ATTR_MULTIPLE_BSSID_COUNT,
+ 	NL80211_ATTR_MULTIPLE_BSSID_IES,
+ 
++	NL80211_ATTR_BEACON_TX_MODE,
++
+ 	/* add attributes here, update the policy in nl80211.c */
+ 
+ 	__NL80211_ATTR_AFTER_LAST,
+@@ -6889,6 +6893,19 @@ enum nl80211_peer_measurement_ftm_failure_reasons {
+ 	NL80211_PMSR_FTM_FAILURE_BAD_CHANGED_PARAMS,
+ };
+ 
++/**
++ * enum nl80211_beacon_tx_mode - Beacon tx mode settings
++ *
++ * @BEACON_TX_MODE_DEFAULT: The beacons shall be sent out in its default mode
++ * @BEACON_TX_MODE_STAGGERED: The beacons shall be sent out in staggered mode
++ * @BEACON_TX_MODE_BURST: The beacons shall be sent out in burst mode
++ *                                    beacon
++ */
++enum nl80211_beacon_tx_mode {
++	NL80211_BEACON_TX_MODE_STAGGERED = 0,
++	NL80211_BEACON_TX_MODE_BURST,
++};
++
+ /**
+  * enum nl80211_peer_measurement_ftm_resp - FTM response attributes
+  * @__NL80211_PMSR_FTM_RESP_ATTR_INVALID: invalid
+diff --git a/net/wireless/nl80211.c b/net/wireless/nl80211.c
+index 8bbc7478386d..16593903857f 100644
+--- a/net/wireless/nl80211.c
++++ b/net/wireless/nl80211.c
+@@ -667,6 +667,9 @@ static const struct nla_policy nl80211_policy[NUM_NL80211_ATTR] = {
+ 	[NL80211_ATTR_MULTIPLE_BSSID_INDEX] = { .type = NLA_U8 },
+ 	[NL80211_ATTR_MULTIPLE_BSSID_COUNT] = { .type = NLA_U8 },
+ 	[NL80211_ATTR_MULTIPLE_BSSID_IES] = { .type = NLA_NESTED },
++	[NL80211_ATTR_BEACON_TX_MODE] = NLA_POLICY_RANGE(NLA_U8,
++					NL80211_BEACON_TX_MODE_STAGGERED,
++					NL80211_BEACON_TX_MODE_BURST),
+ };
+ 
+ /* policy for the key attributes */
+@@ -5072,6 +5075,10 @@ static int nl80211_start_ap(struct sk_buff *skb, struct genl_info *info)
+ 	    !info->attrs[NL80211_ATTR_MULTIPLE_BSSID_PARENT])
+ 		return -EOPNOTSUPP;
+ 
++	if (info->attrs[NL80211_ATTR_BEACON_TX_MODE])
++		params.beacon_tx_mode =
++			nla_get_u8(info->attrs[NL80211_ATTR_BEACON_TX_MODE]);
++
+ 	nl80211_calculate_ap_params(&params);
+ 
+ 	if (info->attrs[NL80211_ATTR_EXTERNAL_AUTH_SUPPORT])
+-- 
+2.25.1
+
