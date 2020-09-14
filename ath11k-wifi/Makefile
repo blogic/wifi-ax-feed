@@ -25,6 +25,7 @@ endef
 
 ALLWIFIBOARDS:= \
 	cig-wf188 \
+	cig-wf188n \
 	sercomm-wallaby
 
 ALLWIFIPACKAGES:=$(foreach BOARD,$(ALLWIFIBOARDS),ath11k-wifi-$(BOARD))
@@ -49,7 +50,7 @@ endef
 
 define ath11k-wifi-install-one
   $(if $(filter $(suffix $(1)),.IPQ6018),\
-    $(call ath11k-wifi-install-one-to,$(1),$(2),IPQ6018),\
+    $(call ath11k-wifi-install-one-to,$(1),$(2),ath11k/IPQ6018/hw1.0),\
   )
   $(if $(filter $(suffix $(1)),.IPQ8074),\
     $(call ath11k-wifi-install-one-to,$(1),$(2),IPQ8074),\
@@ -92,6 +93,7 @@ endef
 
 
 $(eval $(call generate-ath11k-wifi-package,cig-wf188,Cigtech WF188))
+$(eval $(call generate-ath11k-wifi-package,cig-wf188n,Cigtech WF188n))
 $(eval $(call generate-ath11k-wifi-package,sercomm-wallaby,Sercomm Kiwi))
 
 $(foreach PACKAGE,$(ALLWIFIPACKAGES),$(eval $(call BuildPackage,$(PACKAGE))))
